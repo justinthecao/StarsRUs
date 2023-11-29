@@ -143,7 +143,7 @@ public class TraderInterface {
                     currentBalance
                 );
                 resultSet.next();
-                int balance = Integer.parseInt(resultSet.getString("balance"));
+                Float balance = Float.valueOf(resultSet.getString("balance"));
                 if(balance < Integer.parseInt(amount)){
                     System.out.println("You don't have enough money. Cancelling...");
                     return;
@@ -157,7 +157,48 @@ public class TraderInterface {
         }
 
         else if(query.contains("Buy")){
-            String symbol = split[2];
+            String symbol = split[1];
+            int amount = Integer.parseInt(split[2]);
+
+            //check the symbol exists
+            try(Statement statement = connection.createStatement()){
+                String currentBalance = "SELECT balance FROM Customer WHERE username = '" + currentUser + "'";
+                ResultSet balanceSet = statement.executeQuery(
+                    currentBalance
+                );
+                balanceSet.next();
+                Float balance = balanceSet.getFloat("balance");
+                
+
+                String symbolquery = "SELECT * FROM Stock WHERE symbol = '" + symbol + "'";
+                ResultSet symbolSet = statement.executeQuery(
+                    symbolquery
+                );
+                if(!symbolSet.next()){
+                    System.out.println("No symbol found!");
+                    return;
+                }
+                
+                Float curPrice = symbolSet.getFloat("curPrice");
+                if(curPrice * amount + 20 < balance){
+                    System.out.println("You don't have enough money. Cancelling...");
+                }
+
+
+                String depositQuery = "UPDATE Customer SET balance = balance - " + amount * curPrice + 20 + " WHERE username = '" + currentUser + "'";
+                statement.executeUpdate(depositQuery);
+
+                String buyTransaction = "";
+
+            } catch(Exception e){
+                System.out.println("Something went wrong...try again.");
+            }
+
+            //get the current price and then check if buying will become negative
+
+            //subtract price * count from balance
+
+            //if its a new stock account make a new stock account
         }
         
         else if(query.contains("Sell")){
