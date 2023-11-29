@@ -28,6 +28,7 @@ import java.util.Scanner;
 import oracle.jdbc.pool.OracleDataSource;
 import oracle.jdbc.OracleConnection;
 import java.sql.DatabaseMetaData;
+import java.sql.PreparedStatement;
 
 
 
@@ -45,7 +46,7 @@ public class TraderInterface {
     final static String DB_USER = "ADMIN";
     final static String DB_PASSWORD = "Password123!@#";
     final static Scanner scanner = new Scanner(System.in);
-    
+    static String currentUser;
 
     // This method creates a database connection using
     // oracle.jdbc.pool.OracleDataSource.
@@ -80,17 +81,16 @@ public class TraderInterface {
             // Perform some database operations
             // insertTA(connection);
             
-            System.out.println("Login\n\n======== \nUsername: ");
+            System.out.println("Login\n======== \nUsername: ");
             String username = scanner.nextLine();
             System.out.println("Password: ");
             String password = scanner.nextLine();
-            System.out.println(username + " " + password);
             try(Statement query = connection.createStatement()){
                 ResultSet resultSet = query.executeQuery(
                     "SELECT cpassword FROM Customer WHERE username = '" + username + "'"
                 );
                 resultSet.next();
-                if(resultSet.getString("cpassword") != password){
+                if(resultSet.getString("cpassword").equals(password)){
                     System.out.println("Incorrect Username/Password :(");
                     return;
                 }
@@ -100,13 +100,16 @@ public class TraderInterface {
                 System.out.println("Exception: Incorrect Username/Password :(");
                 return;
             }
+            currentUser = username;
 
+            System.out.println("You're in! What do you wanna do.");
             String input;
 
 
             while(!(input = scanner.nextLine()).equals("exit")){
 
                 handleOutput(connection, dbmd, input);
+                System.out.println();
             }
             printInstructors(connection);
         } catch (Exception e) {
@@ -118,9 +121,72 @@ public class TraderInterface {
     
 
     static void handleOutput(OracleConnection connection, DatabaseMetaData dbmd, String query) throws SQLException{
-        System.out.println(query);
-        
+        String[] split  = query.split(" ");
+        if(query.contains("Deposit")){
+            String amount = split[1];
+            System.out.println("Depositing " + amount + " dollars!");
+            try(Statement statement = connection.createStatement()){
+                String depositQuery = "UPDATE Customer SET balance = balance + " +  amount + " WHERE username = '" + currentUser + "'";
+                statement.executeUpdate(depositQuery);
+                System.out.println("Deposited");
+            } catch(Exception e){
+                System.out.println("Something went wrong...try again.");
+            }
+        }
 
+        else if(query.contains("Withdraw")){
+            String amount = split[1];
+            System.out.println("Withdrawing " + amount + " dollars!");
+            try(Statement statement = connection.createStatement()){
+                String currentBalance = "SELECT balance FROM Customer WHERE username = '" + currentUser + "'";
+                ResultSet resultSet = statement.executeQuery(
+                    currentBalance
+                );
+                resultSet.next();
+                int balance = Integer.parseInt(resultSet.getString("balance"));
+                if(balance < Integer.parseInt(amount)){
+                    System.out.println("You don't have enough money. Cancelling...");
+                    return;
+                }
+                String depositQuery = "UPDATE Customer SET balance = balance - " +  amount + " WHERE username = '" + currentUser + "'";
+                statement.executeUpdate(depositQuery);
+                System.out.println("Withdrawed");
+            } catch(Exception e){
+                System.out.println("Something went wrong...try again.");
+            }
+        }
+
+        else if(query.contains("Buy")){
+            String symbol = split[2];
+        }
+        
+        else if(query.contains("Sell")){
+            
+        }
+        else if(query.contains("Cancel")){
+            
+        }
+        else if(query.contains("Show Balance")){
+            
+        }
+        else if(query.contains("Show Transaction")){
+            
+        }
+        else if(query.contains("Symbol")){
+            
+        }
+        else if(query.contains("Movie")){
+            
+        }
+        else if(query.contains("Top")){
+            
+        }
+        else if(query.contains("Review")){
+            
+        }
+        else{
+            System.out.println("Not sure what you wanna do man.");
+        }
     }
 
 
