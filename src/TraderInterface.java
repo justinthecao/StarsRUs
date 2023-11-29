@@ -23,12 +23,18 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.Properties;
+import java.util.Scanner;
 
 import oracle.jdbc.pool.OracleDataSource;
 import oracle.jdbc.OracleConnection;
 import java.sql.DatabaseMetaData;
 
-public class TestConnection {
+
+
+
+
+
+public class TraderInterface {
     // The recommended format of a connection URL is:
     // "jdbc:oracle:thin:@<DATABASE_NAME_LOWERCASE>_tp?TNS_ADMIN=<PATH_TO_WALLET>"
     // where
@@ -37,7 +43,9 @@ public class TestConnection {
     // <PATH_TO_WALLET> is the path to the connection wallet on your machine.
     final static String DB_URL = "jdbc:oracle:thin:@jcoracledb1_tp?TNS_ADMIN=./Wallet_JCORACLEDB1";
     final static String DB_USER = "ADMIN";
-    final static String DB_PASSWORD = "Mfsisimc2a3!";
+    final static String DB_PASSWORD = "Password123!@#";
+    final static Scanner scanner = new Scanner(System.in);
+    
 
     // This method creates a database connection using
     // oracle.jdbc.pool.OracleDataSource.
@@ -70,7 +78,36 @@ public class TestConnection {
             System.out.println("Database username: " + connection.getUserName());
             System.out.println();
             // Perform some database operations
-            insertTA(connection);
+            // insertTA(connection);
+            
+            System.out.println("Login\n\n======== \nUsername: ");
+            String username = scanner.nextLine();
+            System.out.println("Password: ");
+            String password = scanner.nextLine();
+            System.out.println(username + " " + password);
+            try(Statement query = connection.createStatement()){
+                ResultSet resultSet = query.executeQuery(
+                    "SELECT cpassword FROM Customer WHERE username = '" + username + "'"
+                );
+                resultSet.next();
+                if(resultSet.getString("cpassword") != password){
+                    System.out.println("Incorrect Username/Password :(");
+                    return;
+                }
+            } catch (Exception e){
+                System.out.println("ERROR: selection failed.");
+                System.out.println(e);
+                System.out.println("Exception: Incorrect Username/Password :(");
+                return;
+            }
+
+            String input;
+
+
+            while(!(input = scanner.nextLine()).equals("exit")){
+
+                handleOutput(connection, dbmd, input);
+            }
             printInstructors(connection);
         } catch (Exception e) {
             System.out.println("CONNECTION ERROR:");
@@ -78,6 +115,33 @@ public class TestConnection {
         }
         
     }
+    
+
+    static void handleOutput(OracleConnection connection, DatabaseMetaData dbmd, String query) throws SQLException{
+        System.out.println(query);
+        
+
+    }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
     // Inserts another TA into the Instructors table.
     public static void insertTA(Connection connection) throws SQLException {
@@ -101,16 +165,16 @@ public class TestConnection {
         try (Statement statement = connection.createStatement()) {
             try (
                 ResultSet resultSet = statement.executeQuery(
-                    "SELECT * FROM INSTRUCTORS"
+                    "SELECT * FROM Customer"
                 )
             ) {
-                System.out.println("INSTRUCTORS:");
+                System.out.println("Customer:");
                 System.out.println("I_ID\tI_NAME\t\tI_ROLE");
                 while (resultSet.next()) {
                     System.out.println(
-                        resultSet.getString("I_ID") + "\t"
-                        + resultSet.getString("I_NAME") + "\t"
-                        + resultSet.getString("I_ROLE")
+                        resultSet.getString("Username") + "\t"
+                        + resultSet.getString("Cname") + "\t"
+                        + resultSet.getString("Cpassword")
                     );
                 }
             }
