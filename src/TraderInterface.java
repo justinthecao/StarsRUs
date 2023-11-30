@@ -22,12 +22,14 @@ import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.HashMap;
 import java.util.Properties;
 import java.util.Scanner;
 
 import oracle.jdbc.pool.OracleDataSource;
 import oracle.jdbc.OracleConnection;
 import java.sql.DatabaseMetaData;
+import java.sql.Date;
 import java.sql.PreparedStatement;
 
 
@@ -47,6 +49,9 @@ public class TraderInterface {
     final static String DB_PASSWORD = "Password123!@#";
     final static Scanner scanner = new Scanner(System.in);
     static String currentUser;
+    static String date;
+    static int markAccId;
+
 
     // This method creates a database connection using
     // oracle.jdbc.pool.OracleDataSource.
@@ -87,13 +92,14 @@ public class TraderInterface {
             String password = scanner.nextLine();
             try(Statement query = connection.createStatement()){
                 ResultSet resultSet = query.executeQuery(
-                    "SELECT cpassword FROM Customer WHERE username = '" + username + "'"
+                    "SELECT * FROM Customer WHERE username = '" + username + "'"
                 );
                 resultSet.next();
                 if(resultSet.getString("cpassword").equals(password)){
                     System.out.println("Incorrect Username/Password :(");
                     return;
                 }
+                markAccId = resultSet.getInt("markAccId");
             } catch (Exception e){
                 System.out.println("ERROR: selection failed.");
                 System.out.println(e);
@@ -101,7 +107,6 @@ public class TraderInterface {
                 return;
             }
             currentUser = username;
-
             System.out.println("You're in! What do you wanna do.");
             String input;
 
@@ -138,6 +143,22 @@ public class TraderInterface {
         return 0;
     }
 
+    static int addNewTransaction(Statement statement, int type, String date) throws SQLException{
+        int newTransId = getNewTransId(statement);
+
+        String tranQuery = "INSERT INTO Transaction VALUES (" + newTransId + ", " + type +  ",'" + date + "'')";
+        statement.executeUpdate(tranQuery);
+        return newTransId;
+    }
+
+    static int getNewStockAccId(Statement statement) throws SQLException{
+        String getMaxTransId = "SELECT MAX(stockAccId) FROM StockAccount";
+        ResultSet transSet = statement.executeQuery(getMaxTransId);
+        if(transSet.next()){
+            return transSet.getInt("max_value") + 1;
+        }
+        return 0;
+    }
 
 
     static void handleOutput(OracleConnection connection, DatabaseMetaData dbmd, String query) throws SQLException{
@@ -150,9 +171,9 @@ public class TraderInterface {
                 statement.executeUpdate(depositQuery);
                 System.out.println("Deposited");
                 //add to money transaction
-                int newTransId = getNewTransId(statement);
-
-                String tranQuery = "INSERT INTO Transaction VALUES (" + 
+                int newTransId = addNewTransaction(statement, 0, date);
+                String moneytranQuery = "INSERT INTO MoneyTransaction VALUES (" + newTransId + ", " + amount + "," + markAccId + ")";
+                statement.executeUpdate(moneytranQuery);
             } catch(Exception e){
                 System.out.println("Something went wrong...try again.");
                 return;
@@ -170,6 +191,10 @@ public class TraderInterface {
                 }
                 String withdrawQuery = "UPDATE Customer SET balance = balance - " +  amount + " WHERE username = '" + currentUser + "'";
                 statement.executeUpdate(withdrawQuery);
+                
+                int newTransId = addNewTransaction(statement, 1, date);
+                String moneytranQuery = "INSERT INTO MoneyTransaction VALUES (" + newTransId + ", " + amount + "," + markAccId + ")";
+                statement.executeUpdate(moneytranQuery);
                 System.out.println("Withdrawed");
             } catch(Exception e){
                 System.out.println("Something went wrong...try again.");
@@ -182,14 +207,8 @@ public class TraderInterface {
 
             //check the symbol exists
             try(Statement statement = connection.createStatement()){
-                String currentBalance = "SELECT balance FROM Customer WHERE username = '" + currentUser + "'";
-                ResultSet balanceSet = statement.executeQuery(
-                    currentBalance
-                );
-                balanceSet.next();
-                Float balance = balanceSet.getFloat("balance");
+                Float balance = getUserBalance(statement);
                 
-
                 String symbolquery = "SELECT * FROM Stock WHERE symbol = '" + symbol + "'";
                 ResultSet symbolSet = statement.executeQuery(
                     symbolquery
@@ -205,11 +224,23 @@ public class TraderInterface {
                 }
 
 
-                String depositQuery = "UPDATE Customer SET balance = balance - " + amount * curPrice + 20 + " WHERE username = '" + currentUser + "'";
+                String depositQuery = "UPDATE Customer SET balance = balance - (" + amount * curPrice + 20 + ") WHERE username = '" + currentUser + "'";
                 statement.executeUpdate(depositQuery);
-
-                String buyTransaction = "";
-
+                
+                int newTransId = addNewTransaction(statement, 2, date);
+                
+                //if its a new stock for customer make a new one
+                String getAllStock = "SELECT * FROM StockAccount WHERE customerId = '" + markAccId + "' AND symbol = '" + symbol + "'";
+                ResultSet stockAccSet = statement.executeQuery(getAllStock);
+                if(!stockAccSet.next()){
+                    int newStockId = getNewStockAccId(statement);
+                    String addStockAcc = "INSERT INTO StockAccount VALUES (" + newStockId + ", " + markAccId + ", 0," + symbol + ")";
+                    statement.executeQuery(addStockAcc);
+                }
+                String buyTransaction = "INSERT INTO BuyTransaction VALUES (" + newTransId + "," + markAccId + "," + symbol + ", " + curPrice + ", " + amount + ")";
+                statement.executeUpdate(buyTransaction);
+                String updateStockBalance = "UPDATE StockAccount SET balance = balance + " + amount + " WHERE symbol = '" + symbol + "' AND customerId = " + markAccId + ")";
+                statement.executeQuery(updateStockBalance);
             } catch(Exception e){
                 System.out.println("Something went wrong...try again.");
             }
@@ -221,7 +252,48 @@ public class TraderInterface {
             //if its a new stock account make a new stock account
         }
         
+
+        // Sell [symbol] [number of stock] [map of num of stock to og price (4 100 5 200)]
         else if(query.contains("Sell")){
+            String symbol = split[1];
+            int amount = Integer.parseInt(split[2]);
+
+            HashMap<Integer, Float> sell = new HashMap<Integer, Float>();
+            for(int i = 3; i< split.length; i+=2){
+                sell.put(Integer.parseInt(split[i]), Float.parseFloat(split[i+1]));
+            }
+            //check the symbol exists
+            //add transaction add to sell transaction add to sellandbuy transaction
+            try(Statement statement = connection.createStatement()){
+                String symbolquery = "SELECT * FROM Stock WHERE symbol = '" + symbol + "'";
+                ResultSet symbolSet = statement.executeQuery(
+                    symbolquery
+                );
+                if(!symbolSet.next()){
+                    System.out.println("No symbol found!");
+                    return;
+                }
+
+                int newTransId = addNewTransaction(statement,3, date);
+                
+                for()
+
+
+                String getAllStock = "SELECT * FROM StockAccount WHERE customerId = '" + markAccId + "' AND symbol = '" + symbol + "'";
+                ResultSet stockAccSet = statement.executeQuery(getAllStock);
+                String sellTransaction = "INSERT INTO SellTransaction VALUES (" + newTransId +"," + amount + "," + markAccId + "," + symbol + ")";
+                statement.executeUpdate(sellTransaction);
+                String updateStockBalance = "UPDATE StockAccount SET balance = balance - " + amount + " WHERE symbol = '" + symbol + "' AND customerId = " + markAccId + ")";
+                statement.executeQuery(updateStockBalance);
+                
+
+                String depositQuery = "UPDATE Customer SET balance = balance - (" + amount * curPrice + 20 + ") WHERE username = '" + currentUser + "'";
+                statement.executeUpdate(depositQuery);
+                
+            } catch(Exception e){
+                System.out.println("Something went wrong...try again.");
+            }
+
             
         }
         else if(query.contains("Cancel")){
