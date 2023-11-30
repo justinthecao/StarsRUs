@@ -118,7 +118,27 @@ public class TraderInterface {
         }
         
     }
+
+    static Float getUserBalance(Statement statement) throws SQLException{
+        String currentBalance = "SELECT balance FROM Customer WHERE username = '" + currentUser + "'";
+        ResultSet balanceSet = statement.executeQuery(
+            currentBalance
+        );
+        balanceSet.next();
+        Float balance = balanceSet.getFloat("balance");
+        return balance;
+    }
     
+    static int getNewTransId(Statement statement) throws SQLException{
+        String getMaxTransId = "SELECT MAX(transid) FROM Transaction";
+        ResultSet transSet = statement.executeQuery(getMaxTransId);
+        if(transSet.next()){
+            return transSet.getInt("max_value") + 1;
+        }
+        return 0;
+    }
+
+
 
     static void handleOutput(OracleConnection connection, DatabaseMetaData dbmd, String query) throws SQLException{
         String[] split  = query.split(" ");
@@ -130,8 +150,9 @@ public class TraderInterface {
                 statement.executeUpdate(depositQuery);
                 System.out.println("Deposited");
                 //add to money transaction
+                int newTransId = getNewTransId(statement);
 
-                String tranQuery = "INSERT "
+                String tranQuery = "INSERT INTO Transaction VALUES (" + 
             } catch(Exception e){
                 System.out.println("Something went wrong...try again.");
                 return;
@@ -142,18 +163,13 @@ public class TraderInterface {
             String amount = split[1];
             System.out.println("Withdrawing " + amount + " dollars!");
             try(Statement statement = connection.createStatement()){
-                String currentBalance = "SELECT balance FROM Customer WHERE username = '" + currentUser + "'";
-                ResultSet resultSet = statement.executeQuery(
-                    currentBalance
-                );
-                resultSet.next();
-                Float balance = Float.valueOf(resultSet.getString("balance"));
+                Float balance = getUserBalance(statement);
                 if(balance < Integer.parseInt(amount)){
                     System.out.println("You don't have enough money. Cancelling...");
                     return;
                 }
-                String depositQuery = "UPDATE Customer SET balance = balance - " +  amount + " WHERE username = '" + currentUser + "'";
-                statement.executeUpdate(depositQuery);
+                String withdrawQuery = "UPDATE Customer SET balance = balance - " +  amount + " WHERE username = '" + currentUser + "'";
+                statement.executeUpdate(withdrawQuery);
                 System.out.println("Withdrawed");
             } catch(Exception e){
                 System.out.println("Something went wrong...try again.");
