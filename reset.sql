@@ -30,6 +30,14 @@ CREATE TABLE Customer(
     UNIQUE (tax_id)
 );
 
+CREATE TABLE MarketAccountHistory (
+    currDate DATE,
+    currBalance FLOAT,
+    markAccId INTEGER NOT NULL,
+    PRIMARY KEY (currDate, markAccId),
+    FOREIGN KEY (markAccId) REFERENCES Customer ON DELETE CASCADE
+);
+
 CREATE TABLE Administrator(
     username CHAR(64),
     aname CHAR(64),
@@ -164,6 +172,11 @@ CREATE Table Price(
 CREATE TABLE Date(
     currDate DATE,
     PRIMARY KEY (currDate)
+);
+
+CREATE TABLE Market(
+    isOpen BOOLEAN,
+    PRIMARY KEY (isOpen)
 );
 
 

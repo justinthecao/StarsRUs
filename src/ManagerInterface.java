@@ -22,6 +22,7 @@ import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.Date;
 import java.util.Properties;
 import java.util.Scanner;
 
@@ -47,6 +48,7 @@ public class ManagerInterface {
     final static String DB_PASSWORD = "Password123!@#";
     final static Scanner scanner = new Scanner(System.in);
     static String currentUser;
+    static Date currentDate;
 
     // This method creates a database connection using
     // oracle.jdbc.pool.OracleDataSource.
@@ -105,6 +107,17 @@ public class ManagerInterface {
             System.out.println("You're in! What do you wanna do.");
             String input;
 
+            try (Statement datequery = connection.createStatement()) {
+                ResultSet resultDateSet = datequery.executeQuery(
+                    "SELECT currDate FROM Date"
+                );
+                resultDateSet.next();
+                currentDate = resultDateSet.getDate("currDate");
+            } catch (Exception ee) {
+                System.out.println("ERROR: Current Date not found.");
+                System.out.println(ee);
+                return;
+            }
 
             while(!(input = scanner.nextLine()).equals("exit")){
 
@@ -126,7 +139,33 @@ public class ManagerInterface {
         if (query.contains("Add Interest")) {
 
         }
-        else if (query.contains("Generate Monthly Statement"))
+        else if (query.contains("Generate Monthly Statement")) {
+
+        }
+        else if (query.contains("List Active Customers")) {
+
+        }
+        else if (query.contains("Generate DTER")) {
+
+        }
+        else if (query.contains("Customer Report")) {
+
+        }
+        else if (query.contains("Delete Transactions")) {
+
+        }
+        else if (query.contains("OpenMarket")) {
+
+        }
+        else if (query.contains("CloseMarket")) {
+
+        }
+        else if (query.contains("SetPriceStock")) {
+
+        }
+        else if (query.contains("SetDate")) {
+
+        }
     }
 
 

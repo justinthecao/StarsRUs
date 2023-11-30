@@ -131,7 +131,7 @@ public class TraderInterface {
                 System.out.println("Deposited");
                 //add to money transaction
 
-                String tranQuery = "INSERT "
+                String tranQuery = "INSERT ";
             } catch(Exception e){
                 System.out.println("Something went wrong...try again.");
                 return;
