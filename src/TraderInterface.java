@@ -129,8 +129,12 @@ public class TraderInterface {
                 String depositQuery = "UPDATE Customer SET balance = balance + " +  amount + " WHERE username = '" + currentUser + "'";
                 statement.executeUpdate(depositQuery);
                 System.out.println("Deposited");
+                //add to money transaction
+
+                String tranQuery = "INSERT "
             } catch(Exception e){
                 System.out.println("Something went wrong...try again.");
+                return;
             }
         }
 

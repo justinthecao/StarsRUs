@@ -8,6 +8,7 @@ DROP Table SellTransaction;
 Drop Table BuyTransaction;
 DROP table CancelTransaction;
 DROP Table MoneyTransaction;
+DROP Table Transaction;
 DROP Table Movie;
 DROP Table StockAccount;
 DROP Table Stock;
@@ -68,52 +69,57 @@ CREATE TABLE Movie(
     PRIMARY KEY(title, prod_year)
 );
 
-CREATE Table MoneyTransaction(
+CREATE Table Transaction(
+    transid INT, 
+    ttype INT, 
     tdate DATE,
-    ttype INT,
+    PRIMARY KEY (transid)
+);
+
+CREATE Table MoneyTransaction(
+    transid INT,
     amountMoney INT,
     customerId INT NOT NULL,
-    PRIMARY KEY(tdate, customerId),
-    FOREIGN KEY(customerId) references Customer(markAccId) ON DELETE CASCADE
+    PRIMARY KEY(transid, customerId),
+    FOREIGN KEY(customerId) references Customer(markAccId) ON DELETE CASCADE,
+    FOREIGN KEY(transid) references Transaction
 );
 
 CREATE Table CancelTransaction(
-    tdate DATE,
-    canceldate INT NOT NULL,
+    transid INT,
     cancelSym CHAR(3) NOT NULL,
-    cancelId INT NOT NULL,
-    PRIMARY KEY(tdate, cancelId),
-    FOREIGN KEY(cancelSym, cancelId) references StockAccount(symbol, customerId) ON DELETE CASCADE
+    custId INT NOT NULL,
+    PRIMARY KEY(transid, cancelSym, custId),
+    FOREIGN KEY(cancelSym, custId) references StockAccount(symbol, customerId) ON DELETE CASCADE,
+    FOREIGN KEY(transid) references Transaction
 );
 
 CREATE Table BuyTransaction(
-    tdate DATE,
+    transid INT,
     customerId INT NOT NULL,
     stockSym CHAR(3) NOT NULL,
     price INT,
     buycount INT,
-    PRIMARY KEY(tdate, stockSym, customerId),
+    PRIMARY KEY(transid, stockSym, customerId),
     FOREIGN KEY(stockSym, customerId) references StockAccount(symbol, customerId) ON DELETE CASCADE
 );
 
 CREATE Table SellTransaction(
-    tdate DATE,
+    transid INT,
     totalCount INT,
     customerId INT NOT NULL,
     stockSym CHAR(3) NOT NULL,
-    PRIMARY KEY(tdate, stockSym, customerId),
+    PRIMARY KEY(transid, stockSym, customerId),
     FOREIGN KEY(stockSym, customerId) references StockAccount(symbol, customerId) ON DELETE CASCADE
 );
 
 CREATE Table SellCountsBuy(
-    selldate DATE,
-    stockSym1 CHAR(3),
-    custAcc1 INT,
-    buydate DATE,
-    stockSym2 CHAR(3),
-    custAcc2 INT,
-    FOREIGN KEY(selldate, stockSym1, custAcc1) references SellTransaction(tdate, stockSym, customerId) ON DELETE CASCADE,
-    FOREIGN KEY(buydate, stockSym2, custAcc2) references BuyTransaction(tdate, stockSym, customerId) ON DELETE CASCADE
+    sellid INT,
+    stockSym CHAR(3),
+    custAcc INT,
+    buyid INT,
+    FOREIGN KEY(sellid, stockSym, custAcc) references SellTransaction(transid, stockSym, customerId) ON DELETE CASCADE,
+    FOREIGN KEY(buyid, stockSym, custAcc) references BuyTransaction(transid, stockSym, customerId) ON DELETE CASCADE
 );
 
 
