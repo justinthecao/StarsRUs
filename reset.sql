@@ -77,40 +77,42 @@ CREATE Table Transaction(
 );
 
 CREATE Table MoneyTransaction(
-    transid INT,
+    transid INT NOT NULL,
     amountMoney INT,
     customerId INT NOT NULL,
     PRIMARY KEY(transid, customerId),
     FOREIGN KEY(customerId) references Customer(markAccId) ON DELETE CASCADE,
-    FOREIGN KEY(transid) references Transaction
+    FOREIGN KEY(transid) references Transaction ON DELETE CASCADE
 );
 
 CREATE Table CancelTransaction(
-    transid INT,
+    transid INT NOT NULL,
     cancelSym CHAR(3) NOT NULL,
     custId INT NOT NULL,
     PRIMARY KEY(transid, cancelSym, custId),
     FOREIGN KEY(cancelSym, custId) references StockAccount(symbol, customerId) ON DELETE CASCADE,
-    FOREIGN KEY(transid) references Transaction
+    FOREIGN KEY(transid) references Transaction ON DELETE CASCADE
 );
 
 CREATE Table BuyTransaction(
-    transid INT,
+    transid INT NOT NULL,
     customerId INT NOT NULL,
     stockSym CHAR(3) NOT NULL,
     price INT,
     buycount INT,
     PRIMARY KEY(transid, stockSym, customerId),
-    FOREIGN KEY(stockSym, customerId) references StockAccount(symbol, customerId) ON DELETE CASCADE
+    FOREIGN KEY(stockSym, customerId) references StockAccount(symbol, customerId) ON DELETE CASCADE,
+    FOREIGN KEY(transid) references Transaction ON DELETE CASCADE
 );
 
 CREATE Table SellTransaction(
-    transid INT,
+    transid INT NOT NULL,
     totalCount INT,
     customerId INT NOT NULL,
     stockSym CHAR(3) NOT NULL,
     PRIMARY KEY(transid, stockSym, customerId),
-    FOREIGN KEY(stockSym, customerId) references StockAccount(symbol, customerId) ON DELETE CASCADE
+    FOREIGN KEY(stockSym, customerId) references StockAccount(symbol, customerId) ON DELETE CASCADE,
+    FOREIGN KEY(transid) references Transaction ON DELETE CASCADE
 );
 
 CREATE Table SellCountsBuy(
@@ -157,6 +159,11 @@ CREATE Table Price(
     PRIMARY KEY(stockSym, pdate, closePrice),
     FOREIGN KEY(stockSym) references Stock(symbol),
     FOREIGN KEY(pdate, closePrice) references PricePair(pricedate, closeprice)
+);
+
+CREATE TABLE Date(
+    currDate DATE,
+    PRIMARY KEY (currDate)
 );
 
 
@@ -217,8 +224,6 @@ INSERT INTO Review VALUES
 (3, 'Truly one of the movies of all time.', 'A Perfect Murder',1998);
 INSERT INTO Review VALUES
 (4, 'What an emotional rollercoaster!', 'Jerry Maguire',1996);
-
-
 
 
 INSERT INTO Contract VALUES 
