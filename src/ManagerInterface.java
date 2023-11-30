@@ -162,12 +162,16 @@ public class ManagerInterface {
                     );
 
                     Integer totalDays = 0;
-                    Integer totalBalance = 0;
+                    Float totalBalance = (float) 0;
 
                     while (accountHistorySet.next()) {
                         totalDays++;
                         totalBalance += accountHistorySet.getInt("currBalance");
                     }
+
+                    System.out.println("Average Daily Balance: " + totalBalance / totalDays);
+
+
 
 
 

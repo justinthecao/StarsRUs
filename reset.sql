@@ -10,10 +10,14 @@ DROP table CancelTransaction;
 DROP Table MoneyTransaction;
 DROP Table Transaction;
 DROP Table Movie;
+DROP Table StockAmount;
 DROP Table StockAccount;
 DROP Table Stock;
+DROP Table MarketAccountHistory;
 Drop Table Customer;
 DROP Table Administrator;
+DROP Table CurrentDate;
+DROP Table Market;
 
 CREATE TABLE Customer(
     username CHAR(64),
@@ -35,7 +39,7 @@ CREATE TABLE MarketAccountHistory (
     currBalance FLOAT,
     markAccId INTEGER NOT NULL,
     PRIMARY KEY (currDate, markAccId),
-    FOREIGN KEY (markAccId) REFERENCES Customer ON DELETE CASCADE
+    FOREIGN KEY (markAccId) REFERENCES Customer(markAccId) ON DELETE CASCADE
 );
 
 CREATE TABLE Administrator(
@@ -68,6 +72,14 @@ CREATE TABLE StockAccount(
     UNIQUE (stockAccId),
     FOREIGN KEY (customerId) references Customer(markAccId) ON DELETE CASCADE,
     FOREIGN KEY (symbol) references Stock(symbol)
+);
+
+CREATE TABLE StockAmount(
+    stockAccId INT,
+    amount INT,
+    price FLOAT,
+    PRIMARY KEY(stockAccId, price),
+    FOREIGN KEY (stockAccId) references StockAccount (stockAccId)
 );
 
 CREATE TABLE Movie(
@@ -127,9 +139,10 @@ CREATE Table SellCountsBuy(
     sellid INT,
     stockSym CHAR(3),
     custAcc INT,
-    buyid INT,
-    FOREIGN KEY(sellid, stockSym, custAcc) references SellTransaction(transid, stockSym, customerId) ON DELETE CASCADE,
-    FOREIGN KEY(buyid, stockSym, custAcc) references BuyTransaction(transid, stockSym, customerId) ON DELETE CASCADE
+    price FLOAT,
+    amount INT,
+    PRIMARY KEY (sellid, stockSym, custAcc, price),
+    FOREIGN KEY(sellid, stockSym, custAcc) references SellTransaction(transid, stockSym, customerId) ON DELETE CASCADE
 );
 
 
@@ -169,13 +182,13 @@ CREATE Table Price(
     FOREIGN KEY(pdate, closePrice) references PricePair(pricedate, closeprice)
 );
 
-CREATE TABLE Date(
+CREATE TABLE CurrentDate(
     currDate DATE,
     PRIMARY KEY (currDate)
 );
 
 CREATE TABLE Market(
-    isOpen BOOLEAN,
+    isOpen INT,
     PRIMARY KEY (isOpen)
 );
 
@@ -252,64 +265,122 @@ INSERT INTO Contract VALUES
 INSERT INTO StockAccount VALUES
 (12, 1, 100, 'SKB');
 
+INSERT INTO StockAmount VALUES
+(12, 100, 40.00);
+
 INSERT INTO StockAccount VALUES
 (13, 2, 500, 'SMD');
+
+INSERT INTO StockAmount VALUES
+(13, 500, 71.00);
 
 INSERT INTO StockAccount VALUES
 (14, 2, 100, 'STC');
 
+INSERT INTO StockAmount VALUES
+(14, 100, 32.50);
+
 INSERT INTO StockAccount VALUES
 (15, 3, 250, 'STC');
+
+INSERT INTO StockAmount VALUES
+(15, 250, 32.50);
 
 INSERT INTO StockAccount VALUES
 (16, 4, 100, 'SKB');
 
+INSERT INTO StockAmount VALUES
+(16, 100, 40.00);
+
 INSERT INTO StockAccount VALUES
 (17, 4, 500, 'SMD');
+
+INSERT INTO StockAmount VALUES
+(17, 500, 71.00);
 
 INSERT INTO StockAccount VALUES
 (18, 4, 50, 'STC');
 
+INSERT INTO StockAmount VALUES
+(18, 50, 32.50);
+
 INSERT INTO StockAccount VALUES
 (19, 5, 1000, 'SMD');
+
+INSERT INTO StockAmount VALUES
+(19, 1000, 71.00);
 
 INSERT INTO StockAccount VALUES
 (20, 6, 100, 'SKB');
 
+INSERT INTO StockAmount VALUES
+(20, 100, 40.00);
+
 INSERT INTO StockAccount VALUES
 (21, 7, 300, 'SMD');
+
+INSERT INTO StockAmount VALUES
+(21, 300, 71.00);
 
 INSERT INTO StockAccount VALUES
 (22, 8, 500, 'SKB');
 
+INSERT INTO StockAmount VALUES
+(22, 500, 40.00);
+
 INSERT INTO StockAccount VALUES
 (23, 8, 100, 'STC');
+
+INSERT INTO StockAmount VALUES
+(23, 100, 32.50);
 
 INSERT INTO StockAccount VALUES
 (24, 8, 200, 'SMD');
 
+INSERT INTO StockAmount VALUES
+(24, 200, 71.00);
+
 INSERT INTO StockAccount VALUES
 (25, 9, 1000, 'SKB');
+
+INSERT INTO StockAmount VALUES
+(25, 1000, 40.00);
 
 INSERT INTO StockAccount VALUES
 (26, 10, 100, 'SKB');
 
+INSERT INTO StockAmount VALUES
+(26, 100, 40.00);
+
 INSERT INTO StockAccount VALUES
 (27, 10, 100, 'SMD');
+
+INSERT INTO StockAmount VALUES
+(27, 100, 71.00);
 
 INSERT INTO StockAccount VALUES
 (28, 10, 100, 'STC');
 
+INSERT INTO StockAmount VALUES
+(28, 100, 32.50);
+
 INSERT INTO StockAccount VALUES
 (29, 11, 100, 'SKB');
+
+INSERT INTO StockAmount VALUES
+(29, 100, 40.00);
 
 INSERT INTO StockAccount VALUES
 (30, 11, 200, 'STC');
 
+INSERT INTO StockAmount VALUES
+(30, 200, 32.50);
+
 INSERT INTO StockAccount VALUES
 (31, 11, 100, 'SMD');
 
-
+INSERT INTO StockAmount VALUES
+(31, 100, 71.00);
 
 
 
