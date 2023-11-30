@@ -1,172 +1,3 @@
-Drop Table Price;
-Drop Table PricePair;
-Drop Table Review;
-
-Drop Table Contract;
-DROP Table SellCountsBuy;
-DROP Table SellTransaction;
-Drop Table BuyTransaction;
-DROP table CancelTransaction;
-DROP Table MoneyTransaction;
-DROP Table Transaction;
-DROP Table Movie;
-DROP Table StockAccount;
-DROP Table Stock;
-Drop Table Customer;
-DROP Table Administrator;
-
-CREATE TABLE Customer(
-    username CHAR(64),
-    cname CHAR(64),
-    cpassword CHAR(64),
-    cstate Char(2),
-    phone_number CHAR(12),
-    email_address CHAR(64),
-    tax_id INTEGER,
-    markAccId INTEGER NOT NULL,
-    balance FLOAT,
-    PRIMARY KEY (username),
-    UNIQUE (markAccId),
-    UNIQUE (tax_id)
-);
-
-CREATE TABLE Administrator(
-    username CHAR(64),
-    aname CHAR(64),
-    apassword CHAR(64),
-    astate Char(2),
-    phone_number CHAR(12),
-    email_address CHAR(64),
-    tax_id INTEGER,
-    PRIMARY KEY (username),
-    UNIQUE (tax_id)
-);
-
-CREATE TABLE Stock(
-    symbol CHAR(3),
-    curPrice FLOAT,
-    starname CHAR(64) NOT NULL,
-    dob DATE,
-    PRIMARY KEY(symbol),
-    UNIQUE (starname)
-);
-
-CREATE TABLE StockAccount(
-    stockAccId INT NOT NULL,
-    customerId INT NOT NULL,
-    balance INT,
-    symbol CHAR(3) NOT NULL,
-    PRIMARY KEY(symbol, customerId),
-    UNIQUE (stockAccId),
-    FOREIGN KEY (customerId) references Customer(markAccId) ON DELETE CASCADE,
-    FOREIGN KEY (symbol) references Stock(symbol)
-);
-
-CREATE TABLE Movie(
-    title CHAR(20),
-    prod_year INT,
-    rating FLOAT,
-    PRIMARY KEY(title, prod_year)
-);
-
-CREATE Table Transaction(
-    transid INT, 
-    ttype INT, 
-    tdate DATE,
-    PRIMARY KEY (transid)
-);
-
-CREATE Table MoneyTransaction(
-    transid INT NOT NULL,
-    amountMoney INT,
-    customerId INT NOT NULL,
-    PRIMARY KEY(transid, customerId),
-    FOREIGN KEY(customerId) references Customer(markAccId) ON DELETE CASCADE,
-    FOREIGN KEY(transid) references Transaction ON DELETE CASCADE
-);
-
-CREATE Table CancelTransaction(
-    transid INT NOT NULL,
-    cancelSym CHAR(3) NOT NULL,
-    custId INT NOT NULL,
-    PRIMARY KEY(transid, cancelSym, custId),
-    FOREIGN KEY(cancelSym, custId) references StockAccount(symbol, customerId) ON DELETE CASCADE,
-    FOREIGN KEY(transid) references Transaction ON DELETE CASCADE
-);
-
-CREATE Table BuyTransaction(
-    transid INT NOT NULL,
-    customerId INT NOT NULL,
-    stockSym CHAR(3) NOT NULL,
-    price INT,
-    buycount INT,
-    PRIMARY KEY(transid, stockSym, customerId),
-    FOREIGN KEY(stockSym, customerId) references StockAccount(symbol, customerId) ON DELETE CASCADE,
-    FOREIGN KEY(transid) references Transaction ON DELETE CASCADE
-);
-
-CREATE Table SellTransaction(
-    transid INT NOT NULL,
-    totalCount INT,
-    customerId INT NOT NULL,
-    stockSym CHAR(3) NOT NULL,
-    PRIMARY KEY(transid, stockSym, customerId),
-    FOREIGN KEY(stockSym, customerId) references StockAccount(symbol, customerId) ON DELETE CASCADE,
-    FOREIGN KEY(transid) references Transaction ON DELETE CASCADE
-);
-
-CREATE Table SellCountsBuy(
-    sellid INT,
-    stockSym CHAR(3),
-    custAcc INT,
-    buyid INT,
-    FOREIGN KEY(sellid, stockSym, custAcc) references SellTransaction(transid, stockSym, customerId) ON DELETE CASCADE,
-    FOREIGN KEY(buyid, stockSym, custAcc) references BuyTransaction(transid, stockSym, customerId) ON DELETE CASCADE
-);
-
-
-CREATE Table Contract(
-    symbol CHAR(3),
-    title CHAR(20),
-    prodyear INT,
-    value INT,
-    roletype CHAR(10),
-    cyear INT,
-    PRIMARY KEY(symbol, title, prodyear),
-    FOREIGN KEY (symbol) references Stock ,
-    FOREIGN KEY (title, prodyear) references Movie(title, prod_year)
-);
-
-CREATE Table Review(
-    reviewId INT,
-    rcomment CHAR(500),
-    title CHAR(20) NOT NULL,
-    prodyear INT NOT NULL,
-    PRIMARY KEY(reviewId),
-    FOREIGN KEY (title, prodyear) references Movie(title, prod_year) ON DELETE CASCADE
-);
-
-CREATE Table PricePair(
-    pricedate DATE,
-    closeprice FLOAT,
-    PRIMARY KEY(pricedate, closeprice)
-);
-
-CREATE Table Price(
-    stockSym char(3),
-    pdate DATE,
-    closePrice FLOAT,
-    PRIMARY KEY(stockSym, pdate, closePrice),
-    FOREIGN KEY(stockSym) references Stock(symbol),
-    FOREIGN KEY(pdate, closePrice) references PricePair(pricedate, closeprice)
-);
-
-CREATE TABLE Date(
-    currDate DATE,
-    PRIMARY KEY (currDate)
-);
-
-
 INSERT INTO Administrator(username, aname, apassword, astate, phone_number, email_address, tax_id)
 VALUES ('admin', 'John Admin', 'secret', 'CA', '(805)6374632', 'admin@stock.com', 1000);
 
@@ -226,6 +57,8 @@ INSERT INTO Review VALUES
 (4, 'What an emotional rollercoaster!', 'Jerry Maguire',1996);
 
 
+
+
 INSERT INTO Contract VALUES 
 ('SKB', 'L.A. Confidential', 1997, 5000000, 'Actor', 1997);
 
@@ -233,70 +66,68 @@ INSERT INTO Contract VALUES
 ('SMD', 'A Perfect Murder', 1998, 5000000, 'Actor', 1997);
 
 INSERT INTO Contract VALUES
-('STC', 'Jerry Maguire', 1996, 5000000, 'Actor', 1996);
+('STC', 'Jerry Maguire Actor', 1996, 5000000, 'Actor', 1996);
 
 
 INSERT INTO StockAccount VALUES
-(12, 1, 100, 'SKB');
+(1, 100, 'SKB');
 
 INSERT INTO StockAccount VALUES
-(13, 2, 500, 'SMD');
+(2, 500, 'SMD');
 
 INSERT INTO StockAccount VALUES
-(14, 2, 100, 'STC');
+(2, 100, 'STC');
 
 INSERT INTO StockAccount VALUES
-(15, 3, 250, 'STC');
+(3, 250, 'STC');
 
 INSERT INTO StockAccount VALUES
-(16, 4, 100, 'SKB');
+(4, 100, 'SKB');
 
 INSERT INTO StockAccount VALUES
-(17, 4, 500, 'SMD');
+(4, 500, 'SMD');
 
 INSERT INTO StockAccount VALUES
-(18, 4, 50, 'STC');
+(4, 50, 'STC');
 
 INSERT INTO StockAccount VALUES
-(19, 5, 1000, 'SMD');
+(5, 1000, 'SMD');
 
 INSERT INTO StockAccount VALUES
-(20, 6, 100, 'SKB');
+(6, 100, 'SKB');
 
 INSERT INTO StockAccount VALUES
-(21, 7, 300, 'SMD');
+(7, 300, 'SMD');
 
 INSERT INTO StockAccount VALUES
-(22, 8, 500, 'SKB');
+(8, 500, 'SKB');
 
 INSERT INTO StockAccount VALUES
-(23, 8, 100, 'STC');
+(8, 100, 'STC');
 
 INSERT INTO StockAccount VALUES
-(24, 8, 200, 'SMD');
+(8, 200, 'SMD');
 
 INSERT INTO StockAccount VALUES
-(25, 9, 1000, 'SKB');
+(9, 1000, 'SKB');
 
 INSERT INTO StockAccount VALUES
-(26, 10, 100, 'SKB');
+(10, 100, 'SKB');
 
 INSERT INTO StockAccount VALUES
-(27, 10, 100, 'SMD');
+(10, 100, 'SMD');
 
 INSERT INTO StockAccount VALUES
-(28, 10, 100, 'STC');
+(10, 100, 'STC');
 
 INSERT INTO StockAccount VALUES
-(29, 11, 100, 'SKB');
+(11, 100, 'SKB');
 
 INSERT INTO StockAccount VALUES
-(30, 11, 200, 'STC');
+(11, 200, 'STC');
 
 INSERT INTO StockAccount VALUES
-(31, 11, 100, 'SMD');
-
-
+(11, 100, 'SMD');
 
 
 

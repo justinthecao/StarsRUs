@@ -109,7 +109,7 @@ public class TraderInterface {
             currentUser = username;
             System.out.println("You're in! What do you wanna do.");
             String input;
-
+            date = "2023-10-16";
 
             while(!(input = scanner.nextLine()).equals("exit")){
 
@@ -122,42 +122,6 @@ public class TraderInterface {
             System.out.println(e);
         }
         
-    }
-
-    static Float getUserBalance(Statement statement) throws SQLException{
-        String currentBalance = "SELECT balance FROM Customer WHERE username = '" + currentUser + "'";
-        ResultSet balanceSet = statement.executeQuery(
-            currentBalance
-        );
-        balanceSet.next();
-        Float balance = balanceSet.getFloat("balance");
-        return balance;
-    }
-    
-    static int getNewTransId(Statement statement) throws SQLException{
-        String getMaxTransId = "SELECT MAX(transid) FROM Transaction";
-        ResultSet transSet = statement.executeQuery(getMaxTransId);
-        if(transSet.next()){
-            return transSet.getInt("max_value") + 1;
-        }
-        return 0;
-    }
-
-    static int addNewTransaction(Statement statement, int type, String date) throws SQLException{
-        int newTransId = getNewTransId(statement);
-
-        String tranQuery = "INSERT INTO Transaction VALUES (" + newTransId + ", " + type +  ",'" + date + "'')";
-        statement.executeUpdate(tranQuery);
-        return newTransId;
-    }
-
-    static int getNewStockAccId(Statement statement) throws SQLException{
-        String getMaxTransId = "SELECT MAX(stockAccId) FROM StockAccount";
-        ResultSet transSet = statement.executeQuery(getMaxTransId);
-        if(transSet.next()){
-            return transSet.getInt("max_value") + 1;
-        }
-        return 0;
     }
 
 
@@ -175,7 +139,8 @@ public class TraderInterface {
                 String moneytranQuery = "INSERT INTO MoneyTransaction VALUES (" + newTransId + ", " + amount + "," + markAccId + ")";
                 statement.executeUpdate(moneytranQuery);
             } catch(Exception e){
-                System.out.println("Something went wrong...try again.");
+                e.printStackTrace();
+                System.out.println("Deposit: Something went wrong...try again.");
                 return;
             }
         }
@@ -197,6 +162,7 @@ public class TraderInterface {
                 statement.executeUpdate(moneytranQuery);
                 System.out.println("Withdrawed");
             } catch(Exception e){
+                e.printStackTrace();
                 System.out.println("Something went wrong...try again.");
             }
         }
@@ -209,6 +175,8 @@ public class TraderInterface {
             try(Statement statement = connection.createStatement()){
                 Float balance = getUserBalance(statement);
                 
+
+                //check stock exists
                 String symbolquery = "SELECT * FROM Stock WHERE symbol = '" + symbol + "'";
                 ResultSet symbolSet = statement.executeQuery(
                     symbolquery
@@ -217,32 +185,61 @@ public class TraderInterface {
                     System.out.println("No symbol found!");
                     return;
                 }
-                
+                //-----
+
+                //check enough money
                 Float curPrice = symbolSet.getFloat("curPrice");
-                if(curPrice * amount + 20 < balance){
+                System.out.println(curPrice);
+                if((curPrice * amount + 20) > balance){
                     System.out.println("You don't have enough money. Cancelling...");
+                    return;
                 }
+                //------
 
-
+                //update money in markacc
                 String depositQuery = "UPDATE Customer SET balance = balance - (" + amount * curPrice + 20 + ") WHERE username = '" + currentUser + "'";
                 statement.executeUpdate(depositQuery);
-                
+                //------
+
+                //insert new transaction
                 int newTransId = addNewTransaction(statement, 2, date);
-                
                 //if its a new stock for customer make a new one
-                String getAllStock = "SELECT * FROM StockAccount WHERE customerId = '" + markAccId + "' AND symbol = '" + symbol + "'";
+                String getAllStock = "SELECT * FROM StockAccount WHERE customerId = " + markAccId + " AND symbol = '" + symbol + "'";
                 ResultSet stockAccSet = statement.executeQuery(getAllStock);
+                int stockAccId;
                 if(!stockAccSet.next()){
-                    int newStockId = getNewStockAccId(statement);
-                    String addStockAcc = "INSERT INTO StockAccount VALUES (" + newStockId + ", " + markAccId + ", 0," + symbol + ")";
+                    stockAccId = getNewStockAccId(statement);
+                    System.out.println("new stockaccid: " + stockAccId);
+                    String addStockAcc = "INSERT INTO StockAccount VALUES (" + stockAccId+ ", " + markAccId + ", 0, '" + symbol + "')";
                     statement.executeQuery(addStockAcc);
                 }
-                String buyTransaction = "INSERT INTO BuyTransaction VALUES (" + newTransId + "," + markAccId + "," + symbol + ", " + curPrice + ", " + amount + ")";
+                else{
+                    System.out.println("found stockacc");
+                    stockAccId = stockAccSet.getInt("stockAccId");
+                }
+                //---------
+
+                //insert into buytransaction
+                String buyTransaction = "INSERT INTO BuyTransaction VALUES (" + newTransId + "," + markAccId + ", '" + symbol + "', " + curPrice + ", " + amount + ")";
                 statement.executeUpdate(buyTransaction);
-                String updateStockBalance = "UPDATE StockAccount SET balance = balance + " + amount + " WHERE symbol = '" + symbol + "' AND customerId = " + markAccId + ")";
+                //update balance in stockaccount
+                String updateStockBalance = "UPDATE StockAccount SET balance = balance + " + amount + " WHERE symbol = '" + symbol + "' AND customerId = " + markAccId;
                 statement.executeQuery(updateStockBalance);
+                //update stock amount need to check if there is already one at that price
+                String isTherePrice = "SELECT * FROM StockAmount WHERE stockAccId = " + stockAccId + " AND price = " + curPrice;
+                ResultSet isTherePriceSet = statement.executeQuery(isTherePrice);
+                if(isTherePriceSet.next()){
+                    String addToPrice = "UPDATE StockAmount SET amount = amount + "+  amount + " WHERE  stockAccId = " + stockAccId + " AND price = " + curPrice;
+                    statement.executeUpdate(addToPrice);
+                }
+                else{
+                    String insertPriceAmount = "INSERT INTO StockAmount VALUES (" + stockAccId + ", " + amount + ", " + curPrice + ")";
+                    statement.executeUpdate(insertPriceAmount);
+                }
             } catch(Exception e){
-                System.out.println("Something went wrong...try again.");
+                e.printStackTrace();
+
+                System.out.println("Buy: Something went wrong...try again.");
             }
 
             //get the current price and then check if buying will become negative
@@ -258,13 +255,21 @@ public class TraderInterface {
             String symbol = split[1];
             int amount = Integer.parseInt(split[2]);
 
-            HashMap<Integer, Float> sell = new HashMap<Integer, Float>();
+            int add = 0;
+            HashMap<Float, Integer> sell = new HashMap<Float, Integer>();
             for(int i = 3; i< split.length; i+=2){
-                sell.put(Integer.parseInt(split[i]), Float.parseFloat(split[i+1]));
+                add += Integer.parseInt(split[i]);
+                sell.put(Float.parseFloat(split[i+1]), Integer.parseInt(split[i]));
+            }
+            if(add != amount){
+                System.out.println("Number of each price to total not equal");
+                return;
             }
             //check the symbol exists
             //add transaction add to sell transaction add to sellandbuy transaction
             try(Statement statement = connection.createStatement()){
+
+                //check stock exists
                 String symbolquery = "SELECT * FROM Stock WHERE symbol = '" + symbol + "'";
                 ResultSet symbolSet = statement.executeQuery(
                     symbolquery
@@ -273,32 +278,97 @@ public class TraderInterface {
                     System.out.println("No symbol found!");
                     return;
                 }
+                // -----
+                Float balance = getUserBalance(statement);
+                Float curPrice = symbolSet.getFloat("curPrice");
+                if((amount * curPrice - 20 )> balance){
+                    System.out.println("The commission will bankrupt you. Cancelling.");
+                    return;
+                }
 
+                //getting stock amounts and checks
+                String stockQuery= "SELECT * FROM StockAccount WHERE symbol = '" + symbol + "' AND customerID = " + markAccId;
+                ResultSet stockAccountSet = statement.executeQuery(stockQuery);
+                stockAccountSet.next();
+                int stockAccId = stockAccountSet.getInt("stockAccId");
+                String checkStockAmount = "SELECT * FROM StockAmount WHERE stockAccId = " + stockAccId;
+                ResultSet stockAmounts = statement.executeQuery(checkStockAmount);
+                HashMap<Float, Integer> amounts = new HashMap<Float, Integer>();
+                while(stockAmounts.next()){
+                    amounts.put(stockAmounts.getFloat("price"), stockAmounts.getInt("amount"));
+                }
+                for(Float i: sell.keySet()){
+                    if(!amounts.keySet().contains(i) || amounts.get(i) < sell.get(i)){
+                        System.out.println("Either you never bought at one of these prices or you're trying to sell too much at one of those prices");
+                        return;
+                    }
+                }
+
+
+
+                /*we need to update the stock amount 
+                    the stock account balance 
+                    the sell transaction 
+                    the sellcountsbuy */
+                //updating stock amounts
+                for(Float i: sell.keySet()){
+                    String updateAmount = "UPDATE StockAmount SET amount = amount - " + sell.get(i) + " WHERE stockAccId = " + stockAccId + " AND price = " + i;
+                    statement.executeUpdate(updateAmount);
+                }
+
+                //updating stock account balance
+                String updateStock = "UPDATE StockAccount SET balance = balance - " + amount + " WHERE stockAccid = " + stockAccId;
+                statement.executeUpdate(updateStock);
+
+                //adding new trans and selltrans
                 int newTransId = addNewTransaction(statement,3, date);
-                
-                for()
-
-
-                String getAllStock = "SELECT * FROM StockAccount WHERE customerId = '" + markAccId + "' AND symbol = '" + symbol + "'";
-                ResultSet stockAccSet = statement.executeQuery(getAllStock);
-                String sellTransaction = "INSERT INTO SellTransaction VALUES (" + newTransId +"," + amount + "," + markAccId + "," + symbol + ")";
+                String sellTransaction = "INSERT INTO SellTransaction VALUES (" + newTransId +"," + amount + "," + markAccId + ", '" + symbol + "')";
                 statement.executeUpdate(sellTransaction);
-                String updateStockBalance = "UPDATE StockAccount SET balance = balance - " + amount + " WHERE symbol = '" + symbol + "' AND customerId = " + markAccId + ")";
-                statement.executeQuery(updateStockBalance);
                 
-
-                String depositQuery = "UPDATE Customer SET balance = balance - (" + amount * curPrice + 20 + ") WHERE username = '" + currentUser + "'";
-                statement.executeUpdate(depositQuery);
+                //adding sell buy into sellcountsbuy
+                for(Float i: sell.keySet()){
+                    String addSellCountsBuy = "INSERT INTO SellCountsBuy VALUES ( "+ newTransId + ", '" + symbol + "', " + markAccId + ", " + i  + ", " + sell.get(i) + ")";
+                    statement.executeUpdate(addSellCountsBuy);
+                }
+                
+                Float toRemove = amount * curPrice - 20;
+                String depositQuery = "UPDATE Customer SET balance = balance + (" + toRemove + ") WHERE username = '" + currentUser + "'";
+                statement.executeUpdate(depositQuery); 
                 
             } catch(Exception e){
+                e.printStackTrace();
                 System.out.println("Something went wrong...try again.");
             }
 
             
         }
         else if(query.contains("Cancel")){
-            
+            String symbol = split[1];
+            String getRecent = "SELECT MAX(F.transid) FROM (SELECT transid FROM BuyTransaction WHERE stockSym = '" + symbol + "', customerId = " + markAccId 
+                                + " UNION " + 
+                                "SELECT transid FROM BuyTransaction WHERE stockSym = '" + symbol + "', customerId = " + markAccId + ") as F"
+                                ;
+            try(Statement statement = connection.createStatement()){
+                ResultSet recentSet = statement.executeQuery(getRecent);
+                if(!recentSet.next()){
+                    System.out.println("Didn't sell or buy this stock, try again");
+                    return;
+                }
+                int mostrecent = recentSet.getInt("transid");
+                String trans = "SELECT ttype FROM Transaction WHERE transid = " + mostrecent;
+                ResultSet buysell = statement.executeQuery(trans);
+                buysell.next();
+                int type = buysell.getInt("ttype");
+                if(type == 2){
+                    revertBuy(symbol, mostrecent);
+                }
+                //TODO: need to make sure to print out what transaction you are cancelling
+                else{
+                    revertSell(symbol, mostrecent);
+                }
+            }
         }
+
         else if(query.contains("Show Balance")){
             
         }
@@ -323,15 +393,53 @@ public class TraderInterface {
     }
 
 
+    static Float getUserBalance(Statement statement) throws SQLException{
+        String currentBalance = "SELECT balance FROM Customer WHERE username = '" + currentUser + "'";
+        ResultSet balanceSet = statement.executeQuery(
+            currentBalance
+        );
+        balanceSet.next();
+        Float balance = balanceSet.getFloat("balance");
+        return balance;
+    }
+    
+    static int getNewTransId(Statement statement) throws SQLException{
+        String getMaxTransId = "SELECT MAX(transid) as max FROM Transaction";
+        ResultSet transSet = statement.executeQuery(getMaxTransId);
+        transSet.next();
+        System.out.println(transSet.getString("max"));
+        if(!(transSet.getString("max") == null)){
+            System.out.println("WHy is in");
+            return transSet.getInt("max") + 1;
+        }
+        return 0;
+    }
 
+    static int addNewTransaction(Statement statement, int type, String date) throws SQLException{
+        int newTransId = getNewTransId(statement);
+        System.out.println("new transid: " + newTransId);
+        String tranQuery = "INSERT INTO Transaction VALUES (" + newTransId + ", " + type +  ", DATE '" + date + "')";
+        statement.executeUpdate(tranQuery);
+        return newTransId;
+    }
 
+    static int getNewStockAccId(Statement statement) throws SQLException{
+        String getMaxTransId = "SELECT MAX(stockAccId) as max FROM StockAccount";
+        ResultSet transSet = statement.executeQuery(getMaxTransId);
+        transSet.next();
+        if(!(transSet.getString("max") == null)){
+            return transSet.getInt("max") + 1;
+        }
+        return 0;
+    }
 
+    static void revertBuy(String symbol, int transid){
 
+    }
 
-
-
-
-
+    static void revertSell(String symbol, int transid){
+        
+    }
 
 
 
