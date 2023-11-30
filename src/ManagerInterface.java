@@ -22,6 +22,8 @@ import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
 import java.util.Date;
 import java.util.Properties;
 import java.util.Scanner;
@@ -48,7 +50,7 @@ public class ManagerInterface {
     final static String DB_PASSWORD = "Password123!@#";
     final static Scanner scanner = new Scanner(System.in);
     static String currentUser;
-    static Date currentDate;
+    static String currentDate;
 
     // This method creates a database connection using
     // oracle.jdbc.pool.OracleDataSource.
@@ -107,12 +109,12 @@ public class ManagerInterface {
             System.out.println("You're in! What do you wanna do.");
             String input;
 
-            try (Statement datequery = connection.createStatement()) {
-                ResultSet resultDateSet = datequery.executeQuery(
+            try (Statement dateQuery = connection.createStatement()) {
+                ResultSet resultDateSet = dateQuery.executeQuery(
                     "SELECT currDate FROM Date"
                 );
                 resultDateSet.next();
-                currentDate = resultDateSet.getDate("currDate");
+                currentDate = resultDateSet.getDate("currDate").toString();
             } catch (Exception ee) {
                 System.out.println("ERROR: Current Date not found.");
                 System.out.println(ee);
@@ -137,6 +139,43 @@ public class ManagerInterface {
         String[] split  = query.split(" ");
         
         if (query.contains("Add Interest")) {
+
+            try (Statement accountQuery = connection.createStatement()) {
+                ResultSet AccountsSet = accountQuery.executeQuery(
+                    "SELECT markAccId FROM Customer"
+                );
+
+                DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd");
+
+                LocalDate localDate = LocalDate.parse(currentDate, formatter);
+
+                int currMonth = localDate.getMonthValue();
+                int currDay = localDate.getDayOfMonth();
+
+                while (AccountsSet.next()) {
+                    String marketId = AccountsSet.getString("markAccId");
+                    ResultSet accountHistorySet = accountQuery.executeQuery(
+                        "SELECT EXTRACT (DAY FROM currDate), currBalance " +
+                        "FROM MarketAccountHistory " +
+                        "WHERE markAccId = " + marketId + " AND EXTRACT(MONTH FROM currdate) = " + currMonth + " " +
+                        "ORDER BY EXTRACT(DAY FROM currDate)"
+                    );
+
+                    Integer totalDays = 0;
+                    Integer totalBalance = 0;
+
+                    while (accountHistorySet.next()) {
+                        totalDays++;
+                        totalBalance += accountHistorySet.getInt("currBalance");
+                    }
+
+
+
+
+
+
+                }
+            }
 
         }
         else if (query.contains("Generate Monthly Statement")) {
