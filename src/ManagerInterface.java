@@ -140,8 +140,8 @@ public class ManagerInterface {
         
         if (query.contains("Add Interest")) {
 
-            try (Statement accountQuery = connection.createStatement()) {
-                ResultSet AccountsSet = accountQuery.executeQuery(
+            try (Statement interestQuery = connection.createStatement()) {
+                ResultSet AccountsSet = interestQuery.executeQuery(
                     "SELECT markAccId FROM Customer"
                 );
 
@@ -153,9 +153,9 @@ public class ManagerInterface {
                 int currDay = localDate.getDayOfMonth();
 
                 while (AccountsSet.next()) {
-                    String marketId = AccountsSet.getString("markAccId");
-                    ResultSet accountHistorySet = accountQuery.executeQuery(
-                        "SELECT EXTRACT (DAY FROM currDate), currBalance " +
+                    String marketId = Integer.toString(AccountsSet.getInt("markAccId"));
+                    ResultSet accountHistorySet = interestQuery.executeQuery(
+                        "SELECT EXTRACT (DAY FROM currDate) as currDay, currBalance " +
                         "FROM MarketAccountHistory " +
                         "WHERE markAccId = " + marketId + " AND EXTRACT(MONTH FROM currdate) = " + currMonth + " " +
                         "ORDER BY EXTRACT(DAY FROM currDate)"
@@ -164,19 +164,45 @@ public class ManagerInterface {
                     Integer totalDays = 0;
                     Float totalBalance = (float) 0;
 
+                    Float currBalance;
+
+                    ResultSet currBalanceSet = interestQuery.executeQuery(
+                        "SELECT balance " +
+                        "FROM Customer " +
+                        "WHERE markAccId = " + marketId
+                    );
+                    currBalanceSet.next();
+                    currBalance = currBalanceSet.getFloat("balance");
+
+                    Integer prevDay = 1;
+                    Float prevBalance = (float) 0;
                     while (accountHistorySet.next()) {
-                        totalDays++;
-                        totalBalance += accountHistorySet.getInt("currBalance");
+                        Integer currentDay = accountHistorySet.getInt("currDay");
+                        Float currentBalance = accountHistorySet.getFloat("currBalance");
+                        Integer period = currentDay - prevDay;
+                        totalDays += period;
+                        totalBalance += prevBalance * period;
+                        prevDay = currentDay;
+                        prevBalance = currentBalance;
                     }
+
+                    Integer period = currDay - prevDay;
+                    totalDays += period;
+                    totalBalance += prevBalance * period;
+
+                    // first day 1: balance = 100
+                    // second day 5: balance = 200
+                    // current day is 10
 
                     System.out.println("Average Daily Balance: " + totalBalance / totalDays);
 
+                    Float newBalance = (float) (currBalance + ((totalBalance / totalDays) * 0.02));
 
-
-
-
-
-
+                    interestQuery.executeUpdate(
+                        "UPDATE Customer " +
+                        "SET balance = " + newBalance + " " +
+                        "WHERE markAccId = " + marketId
+                    );
 
                 }
             }
