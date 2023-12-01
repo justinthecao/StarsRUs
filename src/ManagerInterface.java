@@ -18,6 +18,7 @@
     Step 3: Run the file with "java -cp lib/ojdbc11.jar ./src/TestConnection.java"
  */
 
+import java.nio.file.attribute.FileStoreAttributeView;
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -27,6 +28,7 @@ import java.time.format.DateTimeFormatter;
 import java.util.Date;
 import java.util.Properties;
 import java.util.Scanner;
+import java.util.Locale.IsoCountryCode;
 
 import oracle.jdbc.pool.OracleDataSource;
 import oracle.jdbc.OracleConnection;
@@ -91,10 +93,10 @@ public class ManagerInterface {
             String password = scanner.nextLine();
             try(Statement query = connection.createStatement()){
                 ResultSet resultSet = query.executeQuery(
-                    "SELECT cpassword FROM Manager WHERE username = '" + username + "'"
+                    "SELECT apassword FROM Administrator WHERE username = '" + username + "'"
                 );
                 resultSet.next();
-                if(resultSet.getString("cpassword").equals(password)){
+                if(resultSet.getString("apassword").equals(password)){
                     System.out.println("Incorrect Username/Password :(");
                     return;
                 }
@@ -111,7 +113,7 @@ public class ManagerInterface {
 
             try (Statement dateQuery = connection.createStatement()) {
                 ResultSet resultDateSet = dateQuery.executeQuery(
-                    "SELECT currDate FROM Date"
+                    "SELECT currDate FROM CurrentDate"
                 );
                 resultDateSet.next();
                 currentDate = resultDateSet.getDate("currDate").toString();
@@ -120,6 +122,8 @@ public class ManagerInterface {
                 System.out.println(ee);
                 return;
             }
+
+            System.out.println("Current Date: " + currentDate);
 
             while(!(input = scanner.nextLine()).equals("exit")){
 
@@ -140,9 +144,10 @@ public class ManagerInterface {
         
         if (query.contains("Add Interest")) {
 
-            try (Statement interestQuery = connection.createStatement()) {
-                ResultSet AccountsSet = interestQuery.executeQuery(
-                    "SELECT markAccId FROM Customer"
+            try (Statement accountsQuery = connection.createStatement()) {
+                Statement interestQuery = connection.createStatement();
+                ResultSet AccountsSet = accountsQuery.executeQuery(
+                    "SELECT markAccId FROM Customer WHERE markAccId = 2"
                 );
 
                 DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd");
@@ -150,22 +155,16 @@ public class ManagerInterface {
                 LocalDate localDate = LocalDate.parse(currentDate, formatter);
 
                 int currMonth = localDate.getMonthValue();
-                int currDay = localDate.getDayOfMonth();
+                int today = localDate.getDayOfMonth();
 
                 while (AccountsSet.next()) {
                     String marketId = Integer.toString(AccountsSet.getInt("markAccId"));
-                    ResultSet accountHistorySet = interestQuery.executeQuery(
-                        "SELECT EXTRACT (DAY FROM currDate) as currDay, currBalance " +
-                        "FROM MarketAccountHistory " +
-                        "WHERE markAccId = " + marketId + " AND EXTRACT(MONTH FROM currdate) = " + currMonth + " " +
-                        "ORDER BY EXTRACT(DAY FROM currDate)"
-                    );
-
                     Integer totalDays = 0;
                     Float totalBalance = (float) 0;
 
                     Float currBalance;
 
+                    System.out.println("Getting Current Balance, Market Id: " + marketId);
                     ResultSet currBalanceSet = interestQuery.executeQuery(
                         "SELECT balance " +
                         "FROM Customer " +
@@ -173,10 +172,22 @@ public class ManagerInterface {
                     );
                     currBalanceSet.next();
                     currBalance = currBalanceSet.getFloat("balance");
+                    
+                    System.out.println("Received Balance: " + currBalance);
 
                     Integer prevDay = 1;
                     Float prevBalance = (float) 0;
+
+                    ResultSet accountHistorySet = interestQuery.executeQuery(
+                        "SELECT EXTRACT (DAY FROM currDate) as currDay, currBalance " +
+                        "FROM MarketAccountHistory " +
+                        "WHERE markAccId = " + marketId + " AND EXTRACT(MONTH FROM currdate) = " + currMonth + " " +
+                        "ORDER BY EXTRACT(DAY FROM currDate)"
+                    );
+                    
                     while (accountHistorySet.next()) {
+                        System.out.println("previous day: " + prevDay);
+                        System.out.println("previous balance: " + prevBalance);
                         Integer currentDay = accountHistorySet.getInt("currDay");
                         Float currentBalance = accountHistorySet.getFloat("currBalance");
                         Integer period = currentDay - prevDay;
@@ -186,7 +197,10 @@ public class ManagerInterface {
                         prevBalance = currentBalance;
                     }
 
-                    Integer period = currDay - prevDay;
+                    System.out.println("previous day: " + prevDay);
+                    System.out.println("previous balance: " + prevBalance);
+
+                    Integer period = today - prevDay + 1;
                     totalDays += period;
                     totalBalance += prevBalance * period;
 
@@ -203,6 +217,8 @@ public class ManagerInterface {
                         "SET balance = " + newBalance + " " +
                         "WHERE markAccId = " + marketId
                     );
+
+                    System.out.println("Updated Balance with Accrued Interest: " + newBalance);
 
                 }
             }
@@ -233,6 +249,11 @@ public class ManagerInterface {
 
         }
         else if (query.contains("SetDate")) {
+            String date = split[1];
+            System.out.println("Changing date to " + date);
+
+            
+
 
         }
     }
