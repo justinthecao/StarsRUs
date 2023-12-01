@@ -322,7 +322,7 @@ public class TraderInterface {
 
                 //adding new trans and selltrans
                 int newTransId = addNewTransaction(statement,3, date);
-                String sellTransaction = "INSERT INTO SellTransaction VALUES (" + newTransId +"," + amount + "," + markAccId + ", '" + symbol + "')";
+                String sellTransaction = "INSERT INTO SellTransaction VALUES (" + newTransId +"," + amount + "," + markAccId + ", '" + symbol + "', " + curPrice + ")";
                 statement.executeUpdate(sellTransaction);
                 
                 //adding sell buy into sellcountsbuy
@@ -447,69 +447,75 @@ public class TraderInterface {
         return 0;
     }
 
-    static void revertBuy(Statement statement, int transid){
+    static void revertBuy(Statement statement, int transid) throws SQLException{
         //must change back everything that happened
         //remove added stocks in stockAmount
         //remove added balance in stockAccount
         //add money back to market account
 
-        int newTransId = addNewTransaction(statement, , date)
+        String getTransactionInfo = "SELECT * FROM BuyTransaction WHERE transid = " + transid;
+        ResultSet transactionSet = statement.executeQuery(getTransactionInfo);
+        transactionSet.next();
+        String symbol = transactionSet.getString("stockSym");
+        float price = transactionSet.getFloat("price");
+        int buycount = transactionSet.getInt("buycount");
+        float balance = getUserBalance(statement);
+        if((balance + price * buycount - 20) < 0){
+            System.out.println("Don't have enough money to cancel last buy.");
+        }
 
-
+        String getStockAcc = "SELECT * FROM StockAccount WHERE customerId = " + markAccId + " AND symbol = '" + symbol + "'";
+        ResultSet stockAccSet = statement.executeQuery(getStockAcc);
+        stockAccSet.next();
+        int stockAcc = stockAccSet.getInt("stockAccId");
+        addNewTransaction(statement, 4 ,date);
+        String updateStockAmount = "UPDATE StockAmount SET amount = amount - " + buycount + " WHERE stockAccId = " + stockAcc;
+        statement.executeUpdate(updateStockAmount);
+        String updateStockAccount = "UPDATE StockAccount SET balance = balance - " + buycount + " WHERE stockAccId = " + stockAcc;
+        statement.executeUpdate(updateStockAccount);
+        float value = price * buycount - 20;
+        String updateMark = "UPDATE Customer SET balance = balance + " + value + " WHERE username = " + currentUser;
+        statement.executeUpdate(updateMark);
     }
 
-    static void revertSell(Statement statement, int transid){
-        //
+    static void revertSell(Statement statement, int transid) throws SQLException{
+        //need to 
+        addNewTransaction(statement, 4 ,date);
+        String getTransactionInfo = "SELECT * FROM SellTransaction WHERE transid = " + transid;
+        ResultSet transactionSet = statement.executeQuery(getTransactionInfo);
+        transactionSet.next();
+        String symbol = transactionSet.getString("stockSym");
+        int totalCount = transactionSet.getInt("totalCount");
+        float price = transactionSet.getFloat("price");
+        float balance = getUserBalance(statement);
+        if((balance - (price * totalCount) - 20) < 0){
+            System.out.println("Don't have enough money to cancel last buy.");
+        }
+
+        String getStockAcc = "SELECT * FROM StockAccount WHERE customerId = " + markAccId + " AND symbol = '" + symbol + "'";
+        ResultSet stockAccSet = statement.executeQuery(getStockAcc);
+        stockAccSet.next();
+        int stockAcc = stockAccSet.getInt("stockAccId");
+        addNewTransaction(statement, 4 ,date);
+
+        String getSellCountsBuy = "SELECT * FROM SellCountsBuy WHERE sellid = " + transid;
+        ResultSet sellCountsSet = statement.executeQuery(getSellCountsBuy);
+        while(sellCountsSet.next()){
+            int amount = sellCountsSet.getInt("amount");
+            float sellPrice = sellCountsSet.getFloat("price");
+            String updateStockAmount = "UPDATE StockAmount SET amount = amount + " + amount + " WHERE stockAccId = " + stockAcc + " AND price = " + sellPrice;
+            statement.executeUpdate(updateStockAmount);
+        }
         
+        String deleteSellCounts= "DELETE FROM SellCountsBuy WHERE sellid = " + transid;
+        statement.executeUpdate(deleteSellCounts);
+
+        String updateStockAccount = "UPDATE StockAccount SET balance = balance + " + totalCount + " WHERE stockAccId = " + stockAcc;
+        statement.executeUpdate(updateStockAccount);
+
+        float value = price *totalCount + 20;
+        String updateMark = "UPDATE Customer SET balance = balance - " + value + " WHERE username = " + currentUser;
+        statement.executeUpdate(updateMark);
     }
 
-
-
-
-
-
-
-
-
-
-    // Inserts another TA into the Instructors table.
-    public static void insertTA(Connection connection) throws SQLException {
-        System.out.println("Preparing to insert TA into Instructors table...");
-        // Statement and ResultSet are AutoCloseable and closed automatically. 
-        try (Statement statement = connection.createStatement()) {
-            try (
-                ResultSet resultSet = statement.executeQuery(
-                    "INSERT INTO INSTRUCTORS VALUES (3, 'Momin Haider', 'TA')"
-                )
-            ) {}
-        } catch (Exception e) {
-            System.out.println("ERROR: insertion failed.");
-            System.out.println(e);
-        }
-    }
-
-    // Displays data from Instructors table.
-    public static void printInstructors(Connection connection) throws SQLException {
-        // Statement and ResultSet are AutoCloseable and closed automatically. 
-        try (Statement statement = connection.createStatement()) {
-            try (
-                ResultSet resultSet = statement.executeQuery(
-                    "SELECT * FROM Customer"
-                )
-            ) {
-                System.out.println("Customer:");
-                System.out.println("I_ID\tI_NAME\t\tI_ROLE");
-                while (resultSet.next()) {
-                    System.out.println(
-                        resultSet.getString("Username") + "\t"
-                        + resultSet.getString("Cname") + "\t"
-                        + resultSet.getString("Cpassword")
-                    );
-                }
-            }
-        } catch (Exception e) {
-            System.out.println("ERROR: selection failed.");
-            System.out.println(e);
-        }
-    }
 }

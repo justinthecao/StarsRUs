@@ -118,7 +118,7 @@ CREATE Table BuyTransaction(
     transid INT NOT NULL,
     customerId INT NOT NULL,
     stockSym CHAR(3) NOT NULL,
-    price INT,
+    price FLOAT,
     buycount INT,
     PRIMARY KEY(transid, stockSym, customerId),
     FOREIGN KEY(stockSym, customerId) references StockAccount(symbol, customerId) ON DELETE CASCADE,
@@ -130,6 +130,7 @@ CREATE Table SellTransaction(
     totalCount INT,
     customerId INT NOT NULL,
     stockSym CHAR(3) NOT NULL,
+    price FLOAT,
     PRIMARY KEY(transid, stockSym, customerId),
     FOREIGN KEY(stockSym, customerId) references StockAccount(symbol, customerId) ON DELETE CASCADE,
     FOREIGN KEY(transid) references Transaction ON DELETE CASCADE
