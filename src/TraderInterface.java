@@ -342,29 +342,45 @@ public class TraderInterface {
 
             
         }
-        else if(query.contains("Cancel")){
-            String symbol = split[1];
-            String getRecent = "SELECT MAX(F.transid) FROM (SELECT transid FROM BuyTransaction WHERE stockSym = '" + symbol + "', customerId = " + markAccId 
-                                + " UNION " + 
-                                "SELECT transid FROM BuyTransaction WHERE stockSym = '" + symbol + "', customerId = " + markAccId + ") as F"
-                                ;
+        else if(query.contains("Cancel")){            
             try(Statement statement = connection.createStatement()){
+                String getRecent = "SELECT MAX(T.transid) as max FROM (SELECT M.transid " +
+                "FROM MoneyTransaction M " +
+                "WHERE M.customerid = " + markAccId +
+                
+                " UNION SELECT C.transid " +
+                "FROM CancelTransaction C " +
+                "WHERE C.custId = "+ markAccId +
+                
+                " UNION SELECT B.transid " +
+                "FROM BuyTransaction B " +
+                "WHERE B.customerId = "+ markAccId +
+                
+                " UNION SELECT S.transid " +
+                "FROM SellTransaction S " +
+                "WHERE S.customerId = "+ markAccId + ") T";
                 ResultSet recentSet = statement.executeQuery(getRecent);
-                if(!recentSet.next()){
-                    System.out.println("Didn't sell or buy this stock, try again");
-                    return;
+                if(recentSet.next()){
+                    int mostRecent = recentSet.getInt("max");
+                    String getRecentType = "SELECT ttype FROM Transaction WHERE transid = " + mostRecent;
+                    ResultSet recentType = statement.executeQuery(getRecentType);
+                    recentType.next();
+                    int type = recentType.getInt("ttype");
+                    if(type != 2 && type != 3){
+                        System.out.println("most previous transaction was not buy or sell. bad.");
+                        return;
+                    }
+                    if(type == 2){
+                        revertBuy(statement, mostRecent);
+                    }
+                    //TODO: need to make sure to print out what transaction you are cancelling
+                    else{
+                        revertSell(statement, mostRecent);
+                    }
                 }
-                int mostrecent = recentSet.getInt("transid");
-                String trans = "SELECT ttype FROM Transaction WHERE transid = " + mostrecent;
-                ResultSet buysell = statement.executeQuery(trans);
-                buysell.next();
-                int type = buysell.getInt("ttype");
-                if(type == 2){
-                    revertBuy(symbol, mostrecent);
-                }
-                //TODO: need to make sure to print out what transaction you are cancelling
                 else{
-                    revertSell(symbol, mostrecent);
+                    System.out.println("Don't have any transactions. try again.");
+                    return;
                 }
             }
         }
@@ -407,9 +423,7 @@ public class TraderInterface {
         String getMaxTransId = "SELECT MAX(transid) as max FROM Transaction";
         ResultSet transSet = statement.executeQuery(getMaxTransId);
         transSet.next();
-        System.out.println(transSet.getString("max"));
         if(!(transSet.getString("max") == null)){
-            System.out.println("WHy is in");
             return transSet.getInt("max") + 1;
         }
         return 0;
@@ -433,11 +447,19 @@ public class TraderInterface {
         return 0;
     }
 
-    static void revertBuy(String symbol, int transid){
+    static void revertBuy(Statement statement, int transid){
+        //must change back everything that happened
+        //remove added stocks in stockAmount
+        //remove added balance in stockAccount
+        //add money back to market account
+
+        int newTransId = addNewTransaction(statement, , date)
+
 
     }
 
-    static void revertSell(String symbol, int transid){
+    static void revertSell(Statement statement, int transid){
+        //
         
     }
 
