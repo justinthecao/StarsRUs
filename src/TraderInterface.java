@@ -26,6 +26,7 @@ import java.util.HashMap;
 import java.util.Properties;
 import java.util.Scanner;
 
+import apple.laf.JRSUIConstants.State;
 import oracle.jdbc.pool.OracleDataSource;
 import oracle.jdbc.OracleConnection;
 import java.sql.DatabaseMetaData;
@@ -116,7 +117,6 @@ public class TraderInterface {
                 handleOutput(connection, dbmd, input);
                 System.out.println();
             }
-            printInstructors(connection);
         } catch (Exception e) {
             System.out.println("CONNECTION ERROR:");
             System.out.println(e);
@@ -195,9 +195,9 @@ public class TraderInterface {
                     return;
                 }
                 //------
-
+                float amounttosubtract =amount * curPrice + 20 ;
                 //update money in markacc
-                String depositQuery = "UPDATE Customer SET balance = balance - (" + amount * curPrice + 20 + ") WHERE username = '" + currentUser + "'";
+                String depositQuery = "UPDATE Customer SET balance = balance - (" + amounttosubtract + ") WHERE username = '" + currentUser + "'";
                 statement.executeUpdate(depositQuery);
                 //------
 
@@ -279,8 +279,8 @@ public class TraderInterface {
                     return;
                 }
                 // -----
-                Float balance = getUserBalance(statement);
                 Float curPrice = symbolSet.getFloat("curPrice");
+                Float balance = getUserBalance(statement);
                 if((amount * curPrice - 20 )> balance){
                     System.out.println("The commission will bankrupt you. Cancelling.");
                     return;
@@ -304,8 +304,6 @@ public class TraderInterface {
                     }
                 }
 
-
-
                 /*we need to update the stock amount 
                     the stock account balance 
                     the sell transaction 
@@ -324,7 +322,6 @@ public class TraderInterface {
                 int newTransId = addNewTransaction(statement,3, date);
                 String sellTransaction = "INSERT INTO SellTransaction VALUES (" + newTransId +"," + amount + "," + markAccId + ", '" + symbol + "', " + curPrice + ")";
                 statement.executeUpdate(sellTransaction);
-                
                 //adding sell buy into sellcountsbuy
                 for(Float i: sell.keySet()){
                     String addSellCountsBuy = "INSERT INTO SellCountsBuy VALUES ( "+ newTransId + ", '" + symbol + "', " + markAccId + ", " + i  + ", " + sell.get(i) + ")";
@@ -362,6 +359,7 @@ public class TraderInterface {
                 ResultSet recentSet = statement.executeQuery(getRecent);
                 if(recentSet.next()){
                     int mostRecent = recentSet.getInt("max");
+                    System.out.println(mostRecent);
                     String getRecentType = "SELECT ttype FROM Transaction WHERE transid = " + mostRecent;
                     ResultSet recentType = statement.executeQuery(getRecentType);
                     recentType.next();
@@ -371,11 +369,11 @@ public class TraderInterface {
                         return;
                     }
                     if(type == 2){
-                        revertBuy(statement, mostRecent);
+                        revertBuy(connection, statement, mostRecent);
                     }
                     //TODO: need to make sure to print out what transaction you are cancelling
                     else{
-                        revertSell(statement, mostRecent);
+                        revertSell(connection, statement, mostRecent);
                     }
                 }
                 else{
@@ -385,11 +383,34 @@ public class TraderInterface {
             }
         }
 
-        else if(query.contains("Show Balance")){
+        else if(query.contains("Show Balance")){ 
+            System.out.println("Heres your balance:");
+            Statement statement = connection.createStatement();
+            float balance = getUserBalance(statement);
+            System.out.println("$" + balance);
             
         }
         else if(query.contains("Show Transaction")){
+            String symbol = split[1];
+            String a = "SELECT [DISTINCT] T.transid as max FROM (" + 
+                "SELECT C.transid " +
+                "FROM CancelTransaction C " +
+                "WHERE C.custId = "+ markAccId +" AND C.stockSym = '" + symbol + "'"+
             
+                " UNION SELECT B.transid " +
+                "FROM BuyTransaction B " +
+                "WHERE B.customerId = "+ markAccId +" AND B.stockSym = '" + symbol + "'"+
+                
+                " UNION SELECT S.transid " +
+                "FROM SellTransaction S " +
+                "WHERE S.customerId = "+ markAccId + " AND S.stockSym = '" + symbol + "'"+ ") T ORDER BY T.transid";
+            Statement statement = connection.createStatement();
+            System.out.println("Here are the ransactions for " + symbol + ":");
+            ResultSet transaction = statement.executeQuery(a);
+            Statement subStatement = connection.createStatement();
+            while(transaction.next()){
+                
+            }
         }
         else if(query.contains("Symbol")){
             
@@ -447,7 +468,7 @@ public class TraderInterface {
         return 0;
     }
 
-    static void revertBuy(Statement statement, int transid) throws SQLException{
+    static void revertBuy(OracleConnection connection, Statement statement, int transid) throws SQLException{
         //must change back everything that happened
         //remove added stocks in stockAmount
         //remove added balance in stockAccount
@@ -468,19 +489,20 @@ public class TraderInterface {
         ResultSet stockAccSet = statement.executeQuery(getStockAcc);
         stockAccSet.next();
         int stockAcc = stockAccSet.getInt("stockAccId");
-        addNewTransaction(statement, 4 ,date);
+        int cancelTransid = addNewTransaction(statement, 4 ,date);
+        String addCancelTransaction = "INSERT INTO CancelTransaction VALUES(" + cancelTransid + ",'" + symbol + "', " + markAccId + ")";
+        statement.executeUpdate(addCancelTransaction);
         String updateStockAmount = "UPDATE StockAmount SET amount = amount - " + buycount + " WHERE stockAccId = " + stockAcc;
         statement.executeUpdate(updateStockAmount);
         String updateStockAccount = "UPDATE StockAccount SET balance = balance - " + buycount + " WHERE stockAccId = " + stockAcc;
         statement.executeUpdate(updateStockAccount);
         float value = price * buycount - 20;
-        String updateMark = "UPDATE Customer SET balance = balance + " + value + " WHERE username = " + currentUser;
+        String updateMark = "UPDATE Customer SET balance = balance + " + value + " WHERE username = '" + currentUser + "'";
         statement.executeUpdate(updateMark);
     }
 
-    static void revertSell(Statement statement, int transid) throws SQLException{
+    static void revertSell(OracleConnection connection, Statement statement, int transid) throws SQLException{
         //need to 
-        addNewTransaction(statement, 4 ,date);
         String getTransactionInfo = "SELECT * FROM SellTransaction WHERE transid = " + transid;
         ResultSet transactionSet = statement.executeQuery(getTransactionInfo);
         transactionSet.next();
@@ -496,15 +518,17 @@ public class TraderInterface {
         ResultSet stockAccSet = statement.executeQuery(getStockAcc);
         stockAccSet.next();
         int stockAcc = stockAccSet.getInt("stockAccId");
-        addNewTransaction(statement, 4 ,date);
-
+        int cancelTransid = addNewTransaction(statement, 4 ,date);
+        String addCancelTransaction = "INSERT INTO CancelTransaction VALUES(" + cancelTransid + ", '" + symbol + "', " + markAccId + ")";
+        statement.executeUpdate(addCancelTransaction);
         String getSellCountsBuy = "SELECT * FROM SellCountsBuy WHERE sellid = " + transid;
         ResultSet sellCountsSet = statement.executeQuery(getSellCountsBuy);
+        Statement subStatement = connection.createStatement();
         while(sellCountsSet.next()){
             int amount = sellCountsSet.getInt("amount");
             float sellPrice = sellCountsSet.getFloat("price");
             String updateStockAmount = "UPDATE StockAmount SET amount = amount + " + amount + " WHERE stockAccId = " + stockAcc + " AND price = " + sellPrice;
-            statement.executeUpdate(updateStockAmount);
+            subStatement.executeUpdate(updateStockAmount);
         }
         
         String deleteSellCounts= "DELETE FROM SellCountsBuy WHERE sellid = " + transid;
@@ -514,7 +538,7 @@ public class TraderInterface {
         statement.executeUpdate(updateStockAccount);
 
         float value = price *totalCount + 20;
-        String updateMark = "UPDATE Customer SET balance = balance - " + value + " WHERE username = " + currentUser;
+        String updateMark = "UPDATE Customer SET balance = balance - " + value + " WHERE username = '" + currentUser + "'";
         statement.executeUpdate(updateMark);
     }
 
