@@ -274,7 +274,6 @@
 
                 System.out.println("List of Active Accounts: " + activeIds);
 
-
             }
             else if (query.contains("Generate DTER")) {
 
