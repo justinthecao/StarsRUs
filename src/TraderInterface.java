@@ -26,7 +26,6 @@ import java.util.HashMap;
 import java.util.Properties;
 import java.util.Scanner;
 
-import apple.laf.JRSUIConstants.State;
 import oracle.jdbc.pool.OracleDataSource;
 import oracle.jdbc.OracleConnection;
 import java.sql.DatabaseMetaData;
@@ -391,8 +390,9 @@ public class TraderInterface {
             
         }
         else if(query.contains("Show Transaction")){
-            String symbol = split[1];
-            String a = "SELECT [DISTINCT] T.transid as max FROM (" + 
+            try{String symbol = split[2];
+                System.out.println("symbol: " + symbol);
+            String a = "SELECT [DISTINCT] T.transid FROM (" + 
                 "SELECT C.transid " +
                 "FROM CancelTransaction C " +
                 "WHERE C.custId = "+ markAccId +" AND C.stockSym = '" + symbol + "'"+
@@ -405,7 +405,7 @@ public class TraderInterface {
                 "FROM SellTransaction S " +
                 "WHERE S.customerId = "+ markAccId + " AND S.stockSym = '" + symbol + "'"+ ") T ORDER BY T.transid";
             Statement statement = connection.createStatement();
-            System.out.println("Here are the ransactions for " + symbol + ":");
+            System.out.println("Here are the transactions for " + symbol + ":");
             ResultSet transaction = statement.executeQuery(a);
             Statement subStatement = connection.createStatement();
             while(transaction.next()){
@@ -414,15 +414,25 @@ public class TraderInterface {
                 int transid = transaction.getInt("transid");
                 if(type == 2){
                     String getBuy = "SELECT * FROM BuyTransaction WHERE transid = " + transid;
-                    subStatement.executeQuery(getBuy);
-                    
+                    ResultSet getBuySet = subStatement.executeQuery(getBuy);
+                    getBuySet.next();
+                    float price = getBuySet.getFloat("price");
+                    int buycount = getBuySet.getInt("buycount");
+                    System.out.println(date + ": Buy - " + symbol + ", " + buycount + " at " + price);
                 }
                 else if(type == 3){
-
+                    String getSell = "SELECT * FROM SellTransaction WHERE transid = " + transid;
+                    ResultSet getSellSet = subStatement.executeQuery(getSell);
+                    getSellSet.next();
+                    float price = getSellSet.getFloat("price");
+                    int Sellcount = getSellSet.getInt("totalCount");
+                    System.out.println(date + ": Sell - " + symbol + ", " + Sellcount + " at " + price);  
                 }
                 else{
-
+                    System.out.println(date + ": Cancel, previous transaction.");
                 }
+            }} catch (SQLException e){
+                e.printStackTrace();
             }
         }
         else if(query.contains("Symbol")){
