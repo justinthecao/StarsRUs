@@ -79,30 +79,45 @@ public class TraderInterface {
             // Perform some database operations
             // insertTA(connection);
 
-            System.out.println("Login\n======== \nUsername: ");
-            String username = scanner.nextLine();
-            System.out.println("Password: ");
-            String password = scanner.nextLine();
-            try (Statement query = connection.createStatement()) {
-                ResultSet resultSet = query.executeQuery(
-                        "SELECT * FROM Customer WHERE username = '" + username + "'");
-                resultSet.next();
-                if (resultSet.getString("cpassword").equals(password)) {
-                    System.out.println("Incorrect Username/Password :(");
+            
+            System.out.println("Do you want to Login or Register?");
+            if(scanner.nextLine().toLowerCase().equals("login")){
+                System.out.println("Login\n======== \nUsername: ");
+                String username = scanner.nextLine();
+                System.out.println("Password: ");
+                String password = scanner.nextLine();
+                try (Statement query = connection.createStatement()) {
+                    ResultSet resultSet = query.executeQuery(
+                            "SELECT * FROM Customer WHERE username = '" + username + "'");
+                    resultSet.next();
+                    if (resultSet.getString("cpassword").equals(password)) {
+                        System.out.println("Incorrect Username/Password :(");
+                        return;
+                    }
+                    markAccId = resultSet.getInt("markAccId");
+                } catch (Exception e) {
+                    System.out.println("ERROR: selection failed.");
+                    System.out.println(e);
+                    System.out.println("Exception: Incorrect Username/Password :(");
                     return;
                 }
-                markAccId = resultSet.getInt("markAccId");
-            } catch (Exception e) {
-                System.out.println("ERROR: selection failed.");
-                System.out.println(e);
-                System.out.println("Exception: Incorrect Username/Password :(");
-                return;
+                currentUser = username;
+                System.out.println("You're in! What do you wanna do.");
             }
-            currentUser = username;
-            System.out.println("You're in! What do you wanna do.");
-            String input;
+            else{
+                System.out.println("What is your firstname?");
+                
+                System.out.println("What state are you in? (Two-Digit)");
+                System.out.println("What is your phone number?");
+                System.out.println("What is your email address?");
+                System.out.println("What is your tax id");
+                System.out.print("New Username: ");
+                System.out.print("New Password: ");
+            }
+            
+            
             date = "2023-10-16";
-
+            String input;
             while (!(input = scanner.nextLine()).equals("exit")) {
 
                 handleOutput(connection, dbmd, input);
