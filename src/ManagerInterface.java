@@ -229,7 +229,22 @@
 
             }
             else if (query.contains("Generate Monthly Statement")) {
+                Integer customerId = Integer.parseInt(split[1]);
 
+                Statement customerQuery = connection.createStatement();
+                ResultSet customerInfo = customerQuery.executeQuery(
+                    "SELECT cname, email_address " +
+                    "FROM Customer " +
+                    "WHERE markAccId = " + customerId;
+                );
+
+                customerInfo.next();
+
+                System.out.println("Generating Monthly Statement for Customer: " + customerId);
+
+                Statement monthlyQuery = connection.createStatement();
+                ResultSet 
+                
             }
             else if (query.contains("List Active Customers")) {
                 System.out.println("Generating Active Customers");
@@ -258,6 +273,8 @@
                         totalShares += buySet.getInt("buycount");
                     }
 
+                    System.out.println("Retrieved Buy Count: " + totalShares);
+
                     ResultSet sellSet = shareCount.executeQuery(
                         "SELECT totalCount " +
                         "FROM SellTransaction " +
@@ -265,7 +282,7 @@
                     );
 
                     while (sellSet.next()) {
-                        totalShares += sellSet.getInt("buycount");
+                        totalShares += sellSet.getInt("totalCount");
                     }
 
                     if (totalShares >= 1000) activeIds.add(marketId);
