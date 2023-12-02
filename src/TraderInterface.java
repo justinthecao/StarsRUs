@@ -437,16 +437,61 @@ public class TraderInterface {
             String symbol = split[1];
             String getStock = "SELECT * FROM Stock WHERE symbol = '" + symbol + "'";
             Statement statement = connection.createStatement();
+            ResultSet stockSet = statement.executeQuery(getStock);
+            stockSet.next();
+            float curPrice = stockSet.getFloat("curPrice");
+            String star = stockSet.getString("starname");
+            Date dob = stockSet.getDate("dob");
+            System.out.println("Stock Info: " + symbol);
+            System.out.println("   Current Price: " + curPrice);
+            System.out.println("   Actor: " + star);
+            System.out.println("   Dob: " + dob);
             
         }
         else if(query.contains("Movie")){
-            
+            String year = split[1];
+            int firstSpace = query.indexOf(' ', 0);
+            int secondSpace = query.indexOf(' ', firstSpace + 1);
+            String movie = query.substring(secondSpace + 1);
+            String getMovie = "SELECT * FROM Movie WHERE title = '" + movie + "' AND year = " + year;
+            Statement statement = connection.createStatement();
+            ResultSet movieSet = statement.executeQuery(getMovie);
+            movieSet.next();
+            int prodYear = movieSet.getInt("prod_year");
+            float rating = movieSet.getFloat("rating");
+            System.out.println("Movie Info");
+            System.out.println("===========");
+            System.out.println(movie);
+            System.out.println("  Production year: " + prodYear);
+            System.out.println("  Rating: " + rating);
+            System.out.println("  Director:");
+            //TODO: need directors
+            System.out.println("  Actors:");
         }
         else if(query.contains("Top")){
-            
+            String range = split[1];
+            int firstyear = Integer.parseInt(range.substring(0, range.indexOf('-')));
+            int secondyear = Integer.parseInt(range.substring(range.indexOf('-') + 1));
+            String select = "SELECT * FROM Movie WHERE prod_year >= " + firstyear + " AND prod_year <= " + secondyear + " AND rating = 10 ORDER BY prod_year";
+            Statement statement = connection.createStatement();
+            ResultSet selectSet = statement.executeQuery(select);
+            System.out.println("Top movies within " + range + ":");
+            while(selectSet.next()){
+                System.out.println(selectSet.getString("title").trim());
+            }
         }
         else if(query.contains("Review")){
-            
+            String year = split[1];
+            int firstSpace = query.indexOf(' ', 0);
+            int secondSpace = query.indexOf(' ', firstSpace + 1);
+            String movie = query.substring(secondSpace + 1);
+            Statement statement = connection.createStatement();
+            String getReviews= "SELECT * FROM Review WHERE title = '" + movie+ "' AND prodyear = " + year;
+            ResultSet reviewSet = statement.executeQuery(getReviews);
+            System.out.println("Reviews For: " + movie);
+            while(reviewSet.next()){
+                System.out.println(reviewSet.getString("rcomment").trim());
+            }
         }
         else{
             System.out.println("Not sure what you wanna do man.");
