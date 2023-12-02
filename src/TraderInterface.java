@@ -409,7 +409,20 @@ public class TraderInterface {
             ResultSet transaction = statement.executeQuery(a);
             Statement subStatement = connection.createStatement();
             while(transaction.next()){
-                
+                int type = transaction.getInt("ttype");
+                Date date = transaction.getDate("tdate");
+                int transid = transaction.getInt("transid");
+                if(type == 2){
+                    String getBuy = "SELECT * FROM BuyTransaction WHERE transid = " + transid;
+                    subStatement.executeQuery(getBuy);
+                    
+                }
+                else if(type == 3){
+
+                }
+                else{
+
+                }
             }
         }
         else if(query.contains("Symbol")){
