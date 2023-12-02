@@ -32,11 +32,6 @@ import java.sql.DatabaseMetaData;
 import java.sql.Date;
 import java.sql.PreparedStatement;
 
-
-
-
-
-
 public class TraderInterface {
     // The recommended format of a connection URL is:
     // "jdbc:oracle:thin:@<DATABASE_NAME_LOWERCASE>_tp?TNS_ADMIN=<PATH_TO_WALLET>"
@@ -51,7 +46,6 @@ public class TraderInterface {
     static String currentUser;
     static String date;
     static int markAccId;
-
 
     // This method creates a database connection using
     // oracle.jdbc.pool.OracleDataSource.
@@ -79,28 +73,26 @@ public class TraderInterface {
             System.out.println("Driver Version: " + dbmd.getDriverVersion());
             // Print some connection properties
             System.out.println(
-                "Default Row Prefetch Value: " + connection.getDefaultRowPrefetch()
-            );
+                    "Default Row Prefetch Value: " + connection.getDefaultRowPrefetch());
             System.out.println("Database username: " + connection.getUserName());
             System.out.println();
             // Perform some database operations
             // insertTA(connection);
-            
+
             System.out.println("Login\n======== \nUsername: ");
             String username = scanner.nextLine();
             System.out.println("Password: ");
             String password = scanner.nextLine();
-            try(Statement query = connection.createStatement()){
+            try (Statement query = connection.createStatement()) {
                 ResultSet resultSet = query.executeQuery(
-                    "SELECT * FROM Customer WHERE username = '" + username + "'"
-                );
+                        "SELECT * FROM Customer WHERE username = '" + username + "'");
                 resultSet.next();
-                if(resultSet.getString("cpassword").equals(password)){
+                if (resultSet.getString("cpassword").equals(password)) {
                     System.out.println("Incorrect Username/Password :(");
                     return;
                 }
                 markAccId = resultSet.getInt("markAccId");
-            } catch (Exception e){
+            } catch (Exception e) {
                 System.out.println("ERROR: selection failed.");
                 System.out.println(e);
                 System.out.println("Exception: Incorrect Username/Password :(");
@@ -111,7 +103,7 @@ public class TraderInterface {
             String input;
             date = "2023-10-16";
 
-            while(!(input = scanner.nextLine()).equals("exit")){
+            while (!(input = scanner.nextLine()).equals("exit")) {
 
                 handleOutput(connection, dbmd, input);
                 System.out.println();
@@ -120,9 +112,8 @@ public class TraderInterface {
             System.out.println("CONNECTION ERROR:");
             System.out.println(e);
         }
-        
-    }
 
+    }
 
     static void handleOutput(OracleConnection connection, DatabaseMetaData dbmd, String query) throws SQLException{
         String[] split  = query.split(" ");
@@ -392,50 +383,60 @@ public class TraderInterface {
         else if(query.contains("Show Transaction")){
             try{String symbol = split[2];
                 System.out.println("symbol: " + symbol);
-            String a = "SELECT [DISTINCT] T.transid FROM (" + 
-                "SELECT C.transid " +
-                "FROM CancelTransaction C " +
-                "WHERE C.custId = "+ markAccId +" AND C.stockSym = '" + symbol + "'"+
-            
-                " UNION SELECT B.transid " +
-                "FROM BuyTransaction B " +
-                "WHERE B.customerId = "+ markAccId +" AND B.stockSym = '" + symbol + "'"+
+                String a = "SELECT DISTINCT T.transid FROM (" + 
+                    "SELECT C.transid as transid " +
+                    "FROM CancelTransaction C " +
+                    "WHERE C.custId = "+ markAccId +" AND C.cancelSym = '" + symbol + "'"+
                 
-                " UNION SELECT S.transid " +
-                "FROM SellTransaction S " +
-                "WHERE S.customerId = "+ markAccId + " AND S.stockSym = '" + symbol + "'"+ ") T ORDER BY T.transid";
-            Statement statement = connection.createStatement();
-            System.out.println("Here are the transactions for " + symbol + ":");
-            ResultSet transaction = statement.executeQuery(a);
-            Statement subStatement = connection.createStatement();
-            while(transaction.next()){
-                int type = transaction.getInt("ttype");
-                Date date = transaction.getDate("tdate");
-                int transid = transaction.getInt("transid");
-                if(type == 2){
-                    String getBuy = "SELECT * FROM BuyTransaction WHERE transid = " + transid;
-                    ResultSet getBuySet = subStatement.executeQuery(getBuy);
-                    getBuySet.next();
-                    float price = getBuySet.getFloat("price");
-                    int buycount = getBuySet.getInt("buycount");
-                    System.out.println(date + ": Buy - " + symbol + ", " + buycount + " at " + price);
+                    " UNION SELECT B.transid as transid " +
+                    "FROM BuyTransaction B " +
+                    "WHERE B.customerId = "+ markAccId +" AND B.stockSym = '" + symbol + "'"+
+                    
+                    " UNION SELECT S.transid as transid " +
+                    "FROM SellTransaction S " +
+                    "WHERE S.customerId = "+ markAccId + " AND S.stockSym = '" + symbol + "'"+ ") T ORDER BY T.transid";
+                
+                Statement statement = connection.createStatement();
+                System.out.println("Here are the transactions for " + symbol + ":");
+                ResultSet transaction = statement.executeQuery(a);
+                Statement subStatement = connection.createStatement();
+                while(transaction.next()){
+                    int transid = transaction.getInt("transid");
+
+                    String tranDetail = "SELECT * FROM Transaction WHERE transid = "+ transid;
+                    ResultSet tranDetailSet = subStatement.executeQuery(tranDetail);
+                    tranDetailSet.next();
+
+                    int type = tranDetailSet.getInt("ttype");
+                    Date date = tranDetailSet.getDate("tdate");
+                    if(type == 2){
+                        String getBuy = "SELECT * FROM BuyTransaction WHERE transid = " + transid;
+                        ResultSet getBuySet = subStatement.executeQuery(getBuy);
+                        getBuySet.next();
+                        float price = getBuySet.getFloat("price");
+                        int buycount = getBuySet.getInt("buycount");
+                        System.out.println(date + ": Buy - " + symbol + ", " + buycount + " at " + price);
+                    }
+                    else if(type == 3){
+                        String getSell = "SELECT * FROM SellTransaction WHERE transid = " + transid;
+                        ResultSet getSellSet = subStatement.executeQuery(getSell);
+                        getSellSet.next();
+                        float price = getSellSet.getFloat("price");
+                        int Sellcount = getSellSet.getInt("totalCount");
+                        System.out.println(date + ": Sell - " + symbol + ", " + Sellcount + " at " + price);  
+                    }
+                    else{
+                        System.out.println(date + ": Cancel, previous transaction.");
+                    }
                 }
-                else if(type == 3){
-                    String getSell = "SELECT * FROM SellTransaction WHERE transid = " + transid;
-                    ResultSet getSellSet = subStatement.executeQuery(getSell);
-                    getSellSet.next();
-                    float price = getSellSet.getFloat("price");
-                    int Sellcount = getSellSet.getInt("totalCount");
-                    System.out.println(date + ": Sell - " + symbol + ", " + Sellcount + " at " + price);  
-                }
-                else{
-                    System.out.println(date + ": Cancel, previous transaction.");
-                }
-            }} catch (SQLException e){
+            } catch (SQLException e){
                 e.printStackTrace();
             }
         }
         else if(query.contains("Symbol")){
+            String symbol = split[1];
+            String getStock = "SELECT * FROM Stock WHERE symbol = '" + symbol + "'";
+            Statement statement = connection.createStatement();
             
         }
         else if(query.contains("Movie")){
@@ -452,50 +453,48 @@ public class TraderInterface {
         }
     }
 
-
-    static Float getUserBalance(Statement statement) throws SQLException{
+    static Float getUserBalance(Statement statement) throws SQLException {
         String currentBalance = "SELECT balance FROM Customer WHERE username = '" + currentUser + "'";
         ResultSet balanceSet = statement.executeQuery(
-            currentBalance
-        );
+                currentBalance);
         balanceSet.next();
         Float balance = balanceSet.getFloat("balance");
         return balance;
     }
-    
-    static int getNewTransId(Statement statement) throws SQLException{
+
+    static int getNewTransId(Statement statement) throws SQLException {
         String getMaxTransId = "SELECT MAX(transid) as max FROM Transaction";
         ResultSet transSet = statement.executeQuery(getMaxTransId);
         transSet.next();
-        if(!(transSet.getString("max") == null)){
+        if (!(transSet.getString("max") == null)) {
             return transSet.getInt("max") + 1;
         }
         return 0;
     }
 
-    static int addNewTransaction(Statement statement, int type, String date) throws SQLException{
+    static int addNewTransaction(Statement statement, int type, String date) throws SQLException {
         int newTransId = getNewTransId(statement);
         System.out.println("new transid: " + newTransId);
-        String tranQuery = "INSERT INTO Transaction VALUES (" + newTransId + ", " + type +  ", DATE '" + date + "')";
+        String tranQuery = "INSERT INTO Transaction VALUES (" + newTransId + ", " + type + ", DATE '" + date + "')";
         statement.executeUpdate(tranQuery);
         return newTransId;
     }
 
-    static int getNewStockAccId(Statement statement) throws SQLException{
+    static int getNewStockAccId(Statement statement) throws SQLException {
         String getMaxTransId = "SELECT MAX(stockAccId) as max FROM StockAccount";
         ResultSet transSet = statement.executeQuery(getMaxTransId);
         transSet.next();
-        if(!(transSet.getString("max") == null)){
+        if (!(transSet.getString("max") == null)) {
             return transSet.getInt("max") + 1;
         }
         return 0;
     }
 
-    static void revertBuy(OracleConnection connection, Statement statement, int transid) throws SQLException{
-        //must change back everything that happened
-        //remove added stocks in stockAmount
-        //remove added balance in stockAccount
-        //add money back to market account
+    static void revertBuy(OracleConnection connection, Statement statement, int transid) throws SQLException {
+        // must change back everything that happened
+        // remove added stocks in stockAmount
+        // remove added balance in stockAccount
+        // add money back to market account
 
         String getTransactionInfo = "SELECT * FROM BuyTransaction WHERE transid = " + transid;
         ResultSet transactionSet = statement.executeQuery(getTransactionInfo);
@@ -504,28 +503,33 @@ public class TraderInterface {
         float price = transactionSet.getFloat("price");
         int buycount = transactionSet.getInt("buycount");
         float balance = getUserBalance(statement);
-        if((balance + price * buycount - 20) < 0){
+        if ((balance + price * buycount - 20) < 0) {
             System.out.println("Don't have enough money to cancel last buy.");
         }
 
-        String getStockAcc = "SELECT * FROM StockAccount WHERE customerId = " + markAccId + " AND symbol = '" + symbol + "'";
+        String getStockAcc = "SELECT * FROM StockAccount WHERE customerId = " + markAccId + " AND symbol = '" + symbol
+                + "'";
         ResultSet stockAccSet = statement.executeQuery(getStockAcc);
         stockAccSet.next();
         int stockAcc = stockAccSet.getInt("stockAccId");
-        int cancelTransid = addNewTransaction(statement, 4 ,date);
-        String addCancelTransaction = "INSERT INTO CancelTransaction VALUES(" + cancelTransid + ",'" + symbol + "', " + markAccId + ")";
+        int cancelTransid = addNewTransaction(statement, 4, date);
+        String addCancelTransaction = "INSERT INTO CancelTransaction VALUES(" + cancelTransid + ",'" + symbol + "', "
+                + markAccId + ")";
         statement.executeUpdate(addCancelTransaction);
-        String updateStockAmount = "UPDATE StockAmount SET amount = amount - " + buycount + " WHERE stockAccId = " + stockAcc;
+        String updateStockAmount = "UPDATE StockAmount SET amount = amount - " + buycount + " WHERE stockAccId = "
+                + stockAcc;
         statement.executeUpdate(updateStockAmount);
-        String updateStockAccount = "UPDATE StockAccount SET balance = balance - " + buycount + " WHERE stockAccId = " + stockAcc;
+        String updateStockAccount = "UPDATE StockAccount SET balance = balance - " + buycount + " WHERE stockAccId = "
+                + stockAcc;
         statement.executeUpdate(updateStockAccount);
         float value = price * buycount - 20;
-        String updateMark = "UPDATE Customer SET balance = balance + " + value + " WHERE username = '" + currentUser + "'";
+        String updateMark = "UPDATE Customer SET balance = balance + " + value + " WHERE username = '" + currentUser
+                + "'";
         statement.executeUpdate(updateMark);
     }
 
-    static void revertSell(OracleConnection connection, Statement statement, int transid) throws SQLException{
-        //need to 
+    static void revertSell(OracleConnection connection, Statement statement, int transid) throws SQLException {
+        // need to
         String getTransactionInfo = "SELECT * FROM SellTransaction WHERE transid = " + transid;
         ResultSet transactionSet = statement.executeQuery(getTransactionInfo);
         transactionSet.next();
@@ -533,35 +537,40 @@ public class TraderInterface {
         int totalCount = transactionSet.getInt("totalCount");
         float price = transactionSet.getFloat("price");
         float balance = getUserBalance(statement);
-        if((balance - (price * totalCount) - 20) < 0){
+        if ((balance - (price * totalCount) - 20) < 0) {
             System.out.println("Don't have enough money to cancel last buy.");
         }
 
-        String getStockAcc = "SELECT * FROM StockAccount WHERE customerId = " + markAccId + " AND symbol = '" + symbol + "'";
+        String getStockAcc = "SELECT * FROM StockAccount WHERE customerId = " + markAccId + " AND symbol = '" + symbol
+                + "'";
         ResultSet stockAccSet = statement.executeQuery(getStockAcc);
         stockAccSet.next();
         int stockAcc = stockAccSet.getInt("stockAccId");
-        int cancelTransid = addNewTransaction(statement, 4 ,date);
-        String addCancelTransaction = "INSERT INTO CancelTransaction VALUES(" + cancelTransid + ", '" + symbol + "', " + markAccId + ")";
+        int cancelTransid = addNewTransaction(statement, 4, date);
+        String addCancelTransaction = "INSERT INTO CancelTransaction VALUES(" + cancelTransid + ", '" + symbol + "', "
+                + markAccId + ")";
         statement.executeUpdate(addCancelTransaction);
         String getSellCountsBuy = "SELECT * FROM SellCountsBuy WHERE sellid = " + transid;
         ResultSet sellCountsSet = statement.executeQuery(getSellCountsBuy);
         Statement subStatement = connection.createStatement();
-        while(sellCountsSet.next()){
+        while (sellCountsSet.next()) {
             int amount = sellCountsSet.getInt("amount");
             float sellPrice = sellCountsSet.getFloat("price");
-            String updateStockAmount = "UPDATE StockAmount SET amount = amount + " + amount + " WHERE stockAccId = " + stockAcc + " AND price = " + sellPrice;
+            String updateStockAmount = "UPDATE StockAmount SET amount = amount + " + amount + " WHERE stockAccId = "
+                    + stockAcc + " AND price = " + sellPrice;
             subStatement.executeUpdate(updateStockAmount);
         }
-        
-        String deleteSellCounts= "DELETE FROM SellCountsBuy WHERE sellid = " + transid;
+
+        String deleteSellCounts = "DELETE FROM SellCountsBuy WHERE sellid = " + transid;
         statement.executeUpdate(deleteSellCounts);
 
-        String updateStockAccount = "UPDATE StockAccount SET balance = balance + " + totalCount + " WHERE stockAccId = " + stockAcc;
+        String updateStockAccount = "UPDATE StockAccount SET balance = balance + " + totalCount + " WHERE stockAccId = "
+                + stockAcc;
         statement.executeUpdate(updateStockAccount);
 
-        float value = price *totalCount + 20;
-        String updateMark = "UPDATE Customer SET balance = balance - " + value + " WHERE username = '" + currentUser + "'";
+        float value = price * totalCount + 20;
+        String updateMark = "UPDATE Customer SET balance = balance - " + value + " WHERE username = '" + currentUser
+                + "'";
         statement.executeUpdate(updateMark);
     }
 
