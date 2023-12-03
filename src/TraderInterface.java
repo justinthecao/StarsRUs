@@ -106,13 +106,41 @@ public class TraderInterface {
             }
             else{
                 System.out.println("What is your firstname?");
-                
+                String firstname = scanner.nextLine();
                 System.out.println("What state are you in? (Two-Digit)");
+                String state = scanner.nextLine();
                 System.out.println("What is your phone number?");
+                String phone = scanner.nextLine();
                 System.out.println("What is your email address?");
+                String email = scanner.nextLine();
                 System.out.println("What is your tax id");
+                String taxid = scanner.nextLine();
                 System.out.print("New Username: ");
+                String username = scanner.nextLine();
+
                 System.out.print("New Password: ");
+                String password = scanner.nextLine();
+                int newMark = getNewMarket(connection);
+                int result = validate(username, taxid);
+                while(result != 0){
+                    if(result == 1){
+                        System.out.println("Try a new taxid:");
+                        taxid = scanner.nextLine();
+                    }
+                    else{
+                        System.out.println("Try a new username:");
+                        username = scanner.nextLine();
+                    }
+                    result = validate(username, taxid);
+                }
+                String insertCustomer = "INSERT INTO Customer VALUES (" + firstname + ", " + username + ", " + password + ", " + state + ","  + phone + ", "  + email + "," + taxid + ", " + newMark + ", 1000)";
+                Statement statement = connection.createStatement();
+                try{
+                    statement.executeQuery(insertCustomer);
+                }catch(SQLException e){
+                    e.printStackTrace();
+                    System.out.println("Something went wrong with registering");
+                }
             }
             
             
@@ -546,6 +574,17 @@ public class TraderInterface {
         transSet.next();
         if (!(transSet.getString("max") == null)) {
             return transSet.getInt("max") + 1;
+        }
+        return 0;
+    }
+
+    static int getNewMarket(OracleConnection connection) throws SQLException{
+        String getMaxCustId = "SELECT MAX(markAccId) as max FROM Customer";
+        Statement statement = connection.createStatement();
+        ResultSet CustSet = statement.executeQuery(getMaxCustId);
+        CustSet.next();
+        if (!(CustSet.getString("max") == null)) {
+            return CustSet.getInt("max") + 1;
         }
         return 0;
     }
