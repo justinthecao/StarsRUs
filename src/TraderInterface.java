@@ -117,21 +117,24 @@ public class TraderInterface {
                 String taxid = scanner.nextLine();
                 System.out.print("New Username: ");
                 String username = scanner.nextLine();
-
                 System.out.print("New Password: ");
                 String password = scanner.nextLine();
                 int newMark = getNewMarket(connection);
-                int result = validate(username, taxid);
+                int result = validate(connection, username, taxid);
                 while(result != 0){
                     if(result == 1){
                         System.out.println("Try a new taxid:");
                         taxid = scanner.nextLine();
                     }
-                    else{
+                    else if(result == 2){
                         System.out.println("Try a new username:");
                         username = scanner.nextLine();
                     }
-                    result = validate(username, taxid);
+                    else if(result == 3){
+                        System.out.println("Taxid is at most 9 digits, try a new taxid:");
+                        taxid = scanner.nextLine();
+                    }
+                    result = validate(connection, username, taxid);
                 }
                 String insertCustomer = "INSERT INTO Customer VALUES (" + firstname + ", " + username + ", " + password + ", " + state + ","  + phone + ", "  + email + "," + taxid + ", " + newMark + ", 1000)";
                 Statement statement = connection.createStatement();
@@ -671,6 +674,28 @@ public class TraderInterface {
         String updateMark = "UPDATE Customer SET balance = balance - " + value + " WHERE username = '" + currentUser
                 + "'";
         statement.executeUpdate(updateMark);
+    }
+
+    static int validate(OracleConnection connection, String username, String taxid) throws SQLException{
+        String getUsername = "SELECT * FROM Customer WHERE username = '" + username + "'";
+        Statement statement = connection.createStatement();
+        ResultSet usernameSet = statement.executeQuery(getUsername);
+        if(usernameSet.next()){
+            return 2;
+        }
+
+        if(taxid.length() > 9){
+            return 3;
+        }
+    
+        String getTaxid = "SELECT * FROM Customer WHERE taxid = " + taxid;
+
+        ResultSet taxIdSet = statement.executeQuery(getTaxid);
+        if(taxIdSet.next()){
+            return 1;
+        }
+
+        return 0;
     }
 
 }
