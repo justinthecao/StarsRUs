@@ -169,19 +169,12 @@ CREATE Table Review(
     FOREIGN KEY (title, prodyear) references Movie(title, prod_year) ON DELETE CASCADE
 );
 
-CREATE Table PricePair(
-    pricedate DATE,
-    closeprice FLOAT,
-    PRIMARY KEY(pricedate, closeprice)
-);
-
 CREATE Table Price(
     stockSym char(3),
     pdate DATE,
     closePrice FLOAT,
-    PRIMARY KEY(stockSym, pdate, closePrice),
-    FOREIGN KEY(stockSym) references Stock(symbol),
-    FOREIGN KEY(pdate, closePrice) references PricePair(pricedate, closeprice)
+    PRIMARY KEY(stockSym, pdate),
+    FOREIGN KEY(stockSym) references Stock(symbol)
 );
 
 CREATE TABLE CurrentDate(
