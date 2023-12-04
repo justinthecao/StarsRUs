@@ -99,7 +99,8 @@
                         "SELECT apassword FROM Administrator WHERE username = '" + username + "'"
                     );
                     resultSet.next();
-                    if(resultSet.getString("apassword").equals(password)){
+                    String correctPassword = resultSet.getString("apassword").trim();
+                    if(!correctPassword.equals(password.trim())){
                         System.out.println("Incorrect Username/Password :(");
                         return;
                     }
@@ -233,7 +234,9 @@
 
                         System.out.println("Average Daily Balance: " + totalBalance / totalDays);
 
-                        Float newBalance = (float) (currBalance + ((totalBalance / totalDays) * 0.02));
+                        Float interestGain = (float) ((totalBalance / totalDays) * 0.02);
+
+                        Float newBalance = (float) (currBalance + interestGain);
 
                         interestQuery.executeUpdate(
                             "UPDATE Customer " +
@@ -242,6 +245,12 @@
                         );
 
                         System.out.println("Updated Balance with Accrued Interest: " + newBalance);
+
+                        interestQuery.executeUpdate(
+                            "INSERT INTO Interest History VALUES (" + marketId + ", " + (interestGain) + ")"
+                        );
+
+                        System.out.println("Amount Gained from Interest: " + (interestGain));
 
                     }
                 }
@@ -393,6 +402,16 @@
                         totalProfit += profitSet.getFloat("profit");
                     }
 
+                    Statement interestQuery = connection.createStatement();
+                    ResultSet interestSet = interestQuery.executeQuery(
+                        "SELECT interestEarning " + 
+                        "FROM InterestHistory " + 
+                        "WHERE customerId = " + marketId
+                    );
+
+                    interestSet.next();
+                    totalProfit += interestSet.getFloat("interestEarning");
+
                     if (totalProfit >= 10000) dterUserNames.add(username.trim());
 
                 }
@@ -450,6 +469,10 @@
 
                 deleteQuery.executeUpdate(
                     "DELETE * FROM Transaction"
+                );
+
+                deleteQuery.executeUpdate(
+                    "DELETE * FROM InterestHistory"
                 );
 
                 System.out.println("All Transactions have been deleted");

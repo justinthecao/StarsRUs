@@ -66,7 +66,7 @@ CREATE TABLE Stock(
 CREATE TABLE StockAccount(
     stockAccId INT NOT NULL,
     customerId INT NOT NULL,
-    balance INT,
+    balance FLOAT,
     symbol CHAR(3) NOT NULL,
     PRIMARY KEY(symbol, customerId),
     UNIQUE (stockAccId),
@@ -76,7 +76,7 @@ CREATE TABLE StockAccount(
 
 CREATE TABLE StockAmount(
     stockAccId INT,
-    amount INT,
+    amount FLOAT,
     price FLOAT,
     PRIMARY KEY(stockAccId, price),
     FOREIGN KEY (stockAccId) references StockAccount (stockAccId)
@@ -98,7 +98,7 @@ CREATE Table Transaction(
 
 CREATE Table MoneyTransaction(
     transid INT NOT NULL,
-    amountMoney INT,
+    amountMoney FLOAT,
     customerId INT NOT NULL,
     PRIMARY KEY(transid, customerId),
     FOREIGN KEY(customerId) references Customer(markAccId) ON DELETE CASCADE,
@@ -118,8 +118,8 @@ CREATE Table BuyTransaction(
     transid INT NOT NULL,
     customerId INT NOT NULL,
     stockSym CHAR(3) NOT NULL,
-    price INT,
-    buycount INT,
+    price FLOAT,
+    buycount FLOAT,
     PRIMARY KEY(transid, stockSym, customerId),
     FOREIGN KEY(stockSym, customerId) references StockAccount(symbol, customerId) ON DELETE CASCADE,
     FOREIGN KEY(transid) references Transaction ON DELETE CASCADE
@@ -127,9 +127,11 @@ CREATE Table BuyTransaction(
 
 CREATE Table SellTransaction(
     transid INT NOT NULL,
-    totalCount INT,
+    totalCount FLOAT,
     customerId INT NOT NULL,
     stockSym CHAR(3) NOT NULL,
+    price FLOAT,
+    profit FLOAT,
     PRIMARY KEY(transid, stockSym, customerId),
     FOREIGN KEY(stockSym, customerId) references StockAccount(symbol, customerId) ON DELETE CASCADE,
     FOREIGN KEY(transid) references Transaction ON DELETE CASCADE
@@ -140,7 +142,7 @@ CREATE Table SellCountsBuy(
     stockSym CHAR(3),
     custAcc INT,
     price FLOAT,
-    amount INT,
+    amount FLOAT,
     PRIMARY KEY (sellid, stockSym, custAcc, price),
     FOREIGN KEY(sellid, stockSym, custAcc) references SellTransaction(transid, stockSym, customerId) ON DELETE CASCADE
 );
@@ -192,42 +194,58 @@ CREATE TABLE Market(
     PRIMARY KEY (isOpen)
 );
 
+CREATE TABLE InterestHistory(
+    customerId INT,
+    interestEarning FLOAT,
+    PRIMARY KEY (customerId)
+);
 
 INSERT INTO Administrator(username, aname, apassword, astate, phone_number, email_address, tax_id)
 VALUES ('admin', 'John Admin', 'secret', 'CA', '(805)6374632', 'admin@stock.com', 1000);
 
 INSERT INTO Customer(username, cname, cpassword, cstate, phone_number, email_address, tax_id, markAccId, balance)
 VALUES ('alfred', 'Alfred Hitchcock', 'hi','CA','(805)2574499','alfred@hotmail.com',1022, 001, 10000);
+INSERT INTO MarketAccountHistory VALUES(DATE '2023-10-1',10000,001);
 
 INSERT INTO Customer(username, cname, cpassword, cstate, phone_number, email_address, tax_id, markAccId, balance)
 VALUES ('billy','Billy Clinton' ,'cl','CA','(805)5629999','billy@yahoo.com',3045, 002, 100000);
+INSERT INTO MarketAccountHistory VALUES(DATE '2023-10-1',100000,002);
 
 INSERT INTO Customer(username, cname, cpassword, cstate, phone_number, email_address, tax_id, markAccId, balance)
 VALUES ('cindy','Cindy Laugher','la','CA','(805)6930011','cindy@hotmail.com',2034, 003, 50000);
+INSERT INTO MarketAccountHistory VALUES(DATE '2023-10-1',50000,003);
 
 INSERT INTO Customer(username, cname, cpassword, cstate, phone_number, email_address, tax_id, markAccId, balance)
 VALUES ('david','David Copperfill','co','CA','(805)8240011','david@yahoo.com',4093, 004, 45000);
+INSERT INTO MarketAccountHistory VALUES(DATE '2023-10-1',45000,004);
 
 INSERT INTO Customer(username, cname, cpassword, cstate, phone_number, email_address, tax_id, markAccId, balance)
 VALUES ('sailor','Elizabeth Sailor','sa','CA','(805)1234567','sailor@hotmail.com',1234, 005, 200000);
+INSERT INTO MarketAccountHistory VALUES(DATE '2023-10-1',200000,005);
 
 INSERT INTO Customer(username, cname, cpassword, cstate, phone_number, email_address, tax_id, markAccId, balance)
 VALUES ('brush','George Brush','br','CA','(805)1357999','george@hotmail.com',8956, 006, 5000);
+INSERT INTO MarketAccountHistory VALUES(DATE '2023-10-1',5000,006);
 
 INSERT INTO Customer(username, cname, cpassword, cstate, phone_number, email_address, tax_id, markAccId, balance)
 VALUES ('ivan','Ivan Stock','st','NJ','(805)3223243','ivan@yahoo.com',2341, 007, 2000);
+INSERT INTO MarketAccountHistory VALUES(DATE '2023-10-1',2000,007);
 
 INSERT INTO Customer(username, cname, cpassword, cstate, phone_number, email_address, tax_id, markAccId, balance)
 VALUES ('joe', 'Joe Pepsi','pe','CA','(805)5668123','pepsi@pepsi.com',0456, 008, 10000);
+INSERT INTO MarketAccountHistory VALUES(DATE '2023-10-1',10000,008);
 
 INSERT INTO Customer(username, cname, cpassword, cstate, phone_number, email_address, tax_id, markAccId, balance)
 VALUES ('magic','Magic Jordon','jo','NJ','(805)4535539','jordon@jordon.org',3455, 009, 130200);
+INSERT INTO MarketAccountHistory VALUES(DATE '2023-10-1',130200,009);
 
 INSERT INTO Customer(username, cname, cpassword, cstate, phone_number, email_address, tax_id, markAccId, balance)
 VALUES ('olive','Olive Stoner','st','CA','(805)2574499','olive@yahoo.com',1123, 010, 35000);
+INSERT INTO MarketAccountHistory VALUES(DATE '2023-10-1',35000,010);
 
 INSERT INTO Customer(username, cname, cpassword, cstate, phone_number, email_address, tax_id, markAccId, balance)
 VALUES ('frank','Frank Olson','ol','CA','(805)3456789','frank@gmail.com',3306, 011, 30500);
+INSERT INTO MarketAccountHistory VALUES(DATE '2023-10-1',30500,011);
 
 INSERT INTO Stock VALUES ('SKB', 40.00, 'Kim Basinger',DATE '1958-12-08');
 
@@ -381,6 +399,9 @@ INSERT INTO StockAccount VALUES
 
 INSERT INTO StockAmount VALUES
 (31, 100, 71.00);
+
+INSERT INTO Market VALUES (1);
+INSERT INTO CurrentDate VALUES (DATE '2023-10-16');
 
 
 
