@@ -182,7 +182,6 @@ public class TraderInterface {
                 String moneytranQuery = "INSERT INTO MoneyTransaction VALUES (" + newTransId + ", " + amount + "," + markAccId + ")";
                 statement.executeUpdate(moneytranQuery);
             } catch(Exception e){
-                e.printStackTrace();
                 System.out.println("Deposit: Something went wrong...try again.");
                 return;
             }
@@ -240,7 +239,6 @@ public class TraderInterface {
 
                 //check enough money
                 Float curPrice = symbolSet.getFloat("curPrice");
-                System.out.println(curPrice);
                 if((curPrice * amount + 20) > balance){
                     System.out.println("You don't have enough money. Cancelling...");
                     return;
@@ -260,16 +258,13 @@ public class TraderInterface {
                 int stockAccId;
                 if(!stockAccSet.next()){
                     stockAccId = getNewStockAccId(statement);
-                    System.out.println("new stockaccid: " + stockAccId);
                     String addStockAcc = "INSERT INTO StockAccount VALUES (" + stockAccId+ ", " + markAccId + ", 0, '" + symbol + "')";
                     statement.executeQuery(addStockAcc);
                 }
                 else{
-                    System.out.println("found stockacc");
                     stockAccId = stockAccSet.getInt("stockAccId");
                 }
                 //---------
-                System.out.println("hello");
                 //insert into buytransaction
                 String buyTransaction = "INSERT INTO BuyTransaction VALUES (" + newTransId + "," + markAccId + ", '" + symbol + "', " + curPrice + ", " + amount + ")";
                 statement.executeUpdate(buyTransaction);
@@ -287,6 +282,8 @@ public class TraderInterface {
                     String insertPriceAmount = "INSERT INTO StockAmount VALUES (" + stockAccId + ", " + amount + ", " + curPrice + ")";
                     statement.executeUpdate(insertPriceAmount);
                 }
+
+                System.out.println("Bought " + amount + " " + symbol + "'s" );
             } catch(Exception e){
                 e.printStackTrace();
 
@@ -395,6 +392,7 @@ public class TraderInterface {
                 Float toRemove = amount * curPrice - 20;
                 String depositQuery = "UPDATE Customer SET balance = balance + (" + toRemove + ") WHERE username = '" + currentUser + "'";
                 statement.executeUpdate(depositQuery); 
+                System.out.println("Sold " + amount + " " + symbol + "'s");
                 
             } catch(Exception e){
                 e.printStackTrace();
@@ -549,9 +547,9 @@ public class TraderInterface {
             float curPrice = stockSet.getFloat("curPrice");
             String star = stockSet.getString("starname");
             Date dob = stockSet.getDate("dob");
-            System.out.println("Stock Info: " + symbol);
+            System.out.println("Stock Info: " + symbol.trim());
             System.out.println("   Current Price: " + curPrice);
-            System.out.println("   Actor: " + star);
+            System.out.println("   Actor: " + star.trim());
             System.out.println("   Dob: " + dob);
             
         }
@@ -642,7 +640,6 @@ public class TraderInterface {
 
     static int addNewTransaction(Statement statement, int type, String date) throws SQLException {
         int newTransId = getNewTransId(statement);
-        System.out.println("new transid: " + newTransId);
         String tranQuery = "INSERT INTO Transaction VALUES (" + newTransId + ", " + type + ", DATE '" + date + "')";
         statement.executeUpdate(tranQuery);
         return newTransId;
