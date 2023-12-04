@@ -145,6 +145,14 @@
 
         static void handleOutput(OracleConnection connection, DatabaseMetaData dbmd, String query) throws SQLException{
 
+            Statement dateQuery = connection.createStatement();
+            ResultSet resultDateSet = dateQuery.executeQuery(
+                "SELECT currDate FROM CurrentDate"
+            );
+            resultDateSet.next();
+            currentDate = resultDateSet.getDate("currDate").toString();
+            System.out.println("Current Date: " + currentDate);
+
             DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd");
 
             LocalDate localDate = LocalDate.parse(currentDate, formatter);
@@ -532,6 +540,21 @@
 
                     System.out.println("Updated Account #" + marketId);
 
+                }
+
+                Statement currPriceQuery = connection.createStatement();
+                ResultSet currPriceSet = currPriceQuery.executeQuery(
+                    "SELECT curPrice, symbol FROM Stock"
+                );
+
+                while (currPriceSet.next()) {
+                    Float price = currPriceSet.getFloat("curPrice");
+                    String symbol = currPriceSet.getString("symbol");
+                    Statement closingPriceQuery = connection.createStatement();
+                    closingPriceQuery.executeUpdate(
+                        "INSERT INTO Price VALUES (" + symbol + ", DATE '" + currentDate + "', " + price + ")" 
+                    );
+                    System.out.println("Updated Closing Prices For " + symbol);
                 }
 
 
