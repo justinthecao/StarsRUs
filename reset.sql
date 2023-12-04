@@ -194,7 +194,11 @@ CREATE TABLE Market(
     PRIMARY KEY (isOpen)
 );
 
-
+CREATE TABLE InterestHistory(
+    customerId INT,
+    interestEarning FLOAT,
+    PRIMARY KEY (customerId)
+);
 
 INSERT INTO Administrator(username, aname, apassword, astate, phone_number, email_address, tax_id)
 VALUES ('admin', 'John Admin', 'secret', 'CA', '(805)6374632', 'admin@stock.com', 1000);
