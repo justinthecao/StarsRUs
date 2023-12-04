@@ -149,6 +149,8 @@ public class TraderInterface {
                 }
                 currentUser = username;
                 markAccId = newMark;
+                System.out.println("You're in! What do you wanna do.");
+
             }
             
             String input;
@@ -191,7 +193,7 @@ public class TraderInterface {
             System.out.println("Withdrawing " + amount + " dollars!");
             try(Statement statement = connection.createStatement()){
                 Float balance = getUserBalance(statement);
-                if(balance < Integer.parseInt(amount)){
+                if(balance < Float.parseFloat(amount)){
                     System.out.println("You don't have enough money. Cancelling...");
                     return;
                 }
@@ -576,9 +578,19 @@ public class TraderInterface {
             System.out.println("  Production year: " + prodYear);
             System.out.println("  Rating: " + rating);
             System.out.println("  Director:");
+            String getDirectorss = "SELECT * FROM Contract C, Stock S WHERE C.symbol = S.symbol AND C.title = '" + movie + "' AND C.prodyear = " + year + " AND (roletype = 'Both' OR roletype = 'Director')";
+            ResultSet DirectorsSet = statement.executeQuery(getDirectorss);
+            while(DirectorsSet.next()){
+                System.out.println("   " + DirectorsSet.getString("starname"));
+            }
             //TODO: need directors
             System.out.println("  Actors:");
-        }
+            String getActors = "SELECT * FROM Contract C, Stock S WHERE C.symbol = S.symbol AND C.title = '" + movie + "' AND C.prodyear = " + year + " AND (roletype = 'Both' OR roletype = 'Actor')";
+            ResultSet actorSet = statement.executeQuery(getActors);
+            while(actorSet.next()){
+                System.out.println("   " + actorSet.getString("starname"));
+            }
+        }   
         else if(query.contains("Top")){
             String range = split[1];
             int firstyear = Integer.parseInt(range.substring(0, range.indexOf('-')));
@@ -786,5 +798,4 @@ public class TraderInterface {
         return true;
 
     }
-
 }
