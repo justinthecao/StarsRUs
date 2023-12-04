@@ -210,7 +210,7 @@ public class TraderInterface {
                 return;
             }
             String symbol = split[1];
-            int amount = Integer.parseInt(split[2]);
+            float amount = Float.parseFloat(split[2]);
 
             //check the symbol exists
             try(Statement statement = connection.createStatement()){
@@ -259,7 +259,7 @@ public class TraderInterface {
                     stockAccId = stockAccSet.getInt("stockAccId");
                 }
                 //---------
-
+                System.out.println("hello");
                 //insert into buytransaction
                 String buyTransaction = "INSERT INTO BuyTransaction VALUES (" + newTransId + "," + markAccId + ", '" + symbol + "', " + curPrice + ", " + amount + ")";
                 statement.executeUpdate(buyTransaction);
@@ -298,13 +298,13 @@ public class TraderInterface {
                 return;
             }
             String symbol = split[1];
-            int amount = Integer.parseInt(split[2]);
+            float amount = Float.parseFloat(split[2]);
 
-            int add = 0;
-            HashMap<Float, Integer> sell = new HashMap<Float, Integer>();
+            float add = 0;
+            HashMap<Float, Float> sell = new HashMap<Float, Float>();
             for(int i = 3; i< split.length; i+=2){
-                add += Integer.parseInt(split[i]);
-                sell.put(Float.parseFloat(split[i+1]), Integer.parseInt(split[i]));
+                add += Float.parseFloat(split[i]);
+                sell.put(Float.parseFloat(split[i+1]), Float.parseFloat(split[i]));
             }
             if(add != amount){
                 System.out.println("Number of each price to total not equal");
@@ -326,7 +326,7 @@ public class TraderInterface {
                 // -----
                 Float curPrice = symbolSet.getFloat("curPrice");
                 Float balance = getUserBalance(statement);
-                if((amount * curPrice - 20 )> balance){
+                if((balance + amount * curPrice - 20 ) < 0){
                     System.out.println("The commission will bankrupt you. Cancelling.");
                     return;
                 }
@@ -338,9 +338,9 @@ public class TraderInterface {
                 int stockAccId = stockAccountSet.getInt("stockAccId");
                 String checkStockAmount = "SELECT * FROM StockAmount WHERE stockAccId = " + stockAccId;
                 ResultSet stockAmounts = statement.executeQuery(checkStockAmount);
-                HashMap<Float, Integer> amounts = new HashMap<Float, Integer>();
+                HashMap<Float, Float> amounts = new HashMap<Float, Float>();
                 while(stockAmounts.next()){
-                    amounts.put(stockAmounts.getFloat("price"), stockAmounts.getInt("amount"));
+                    amounts.put(stockAmounts.getFloat("price"), stockAmounts.getFloat("amount"));
                 }
                 for(Float i: sell.keySet()){
                     if(!amounts.keySet().contains(i) || amounts.get(i) < sell.get(i)){
@@ -354,9 +354,12 @@ public class TraderInterface {
                     the sell transaction 
                     the sellcountsbuy */
                 //updating stock amounts
+                float profit = 0;
+                //sell is price: amount
                 for(Float i: sell.keySet()){
                     String updateAmount = "UPDATE StockAmount SET amount = amount - " + sell.get(i) + " WHERE stockAccId = " + stockAccId + " AND price = " + i;
                     statement.executeUpdate(updateAmount);
+                    profit += (curPrice - i) * sell.get(i);
                 }
 
                 //updating stock account balance
@@ -365,7 +368,9 @@ public class TraderInterface {
 
                 //adding new trans and selltrans
                 int newTransId = addNewTransaction(statement,3, date);
-                String sellTransaction = "INSERT INTO SellTransaction VALUES (" + newTransId +"," + amount + "," + markAccId + ", '" + symbol + "', " + curPrice + ")";
+
+
+                String sellTransaction = "INSERT INTO SellTransaction VALUES (" + newTransId +"," + amount + "," + markAccId + ", '" + symbol + "', " + curPrice + "," + profit + ")";
                 statement.executeUpdate(sellTransaction);
                 //adding sell buy into sellcountsbuy
                 for(Float i: sell.keySet()){
@@ -417,10 +422,12 @@ public class TraderInterface {
                         System.out.println("most previous transaction was not buy or sell. bad.");
                         return;
                     }
-                    // if(recentType.getDate("tdate") != getDate(connection)){
-                    //     System.out.println("Cannot cancel transaction made on another day.");
-                    //     return;
-                    // }
+                    if(!recentType.getDate("tdate").toString().equals(getDate(connection).toString())){
+                        System.out.println(recentType.getDate("tdate").toString() );
+                        System.out.println(getDate(connection).toString());
+                        System.out.println("Cannot cancel transaction made on another day.");
+                        return;
+                    }
                     if(type == 2){
                         revertBuy(connection, statement, mostRecent, date);
                     }
@@ -493,7 +500,7 @@ public class TraderInterface {
                         ResultSet getBuySet = subStatement.executeQuery(getBuy);
                         getBuySet.next();
                         float price = getBuySet.getFloat("price");
-                        int buycount = getBuySet.getInt("buycount");
+                        float buycount = getBuySet.getFloat("buycount");
                         System.out.println(tdate + ": Buy - " + symbol + ", " + buycount + " at " + price);
                     }
                     else if(type == 3){
@@ -501,8 +508,8 @@ public class TraderInterface {
                         ResultSet getSellSet = subStatement.executeQuery(getSell);
                         getSellSet.next();
                         float price = getSellSet.getFloat("price");
-                        int Sellcount = getSellSet.getInt("totalCount");
-                        System.out.println(tdate + ": Sell - " + symbol + ", " + Sellcount + " at " + price);  
+                        float Sellcount = getSellSet.getFloat("totalCount");
+                        System.out.println(tdate + ": Sell - " + symbol + ", " + Sellcount + " at " + price + " - Profit : " + getSellSet.getFloat("profit"));  
                     }
                     else{
                         System.out.println(tdate + ": Cancelled.");
@@ -645,7 +652,7 @@ public class TraderInterface {
         transactionSet.next();
         String symbol = transactionSet.getString("stockSym");
         float price = transactionSet.getFloat("price");
-        int buycount = transactionSet.getInt("buycount");
+        float buycount = transactionSet.getFloat("buycount");
         float balance = getUserBalance(statement);
         if ((balance + price * buycount - 20) < 0) {
             System.out.println("Don't have enough money to cancel last buy.");
@@ -680,7 +687,7 @@ public class TraderInterface {
         ResultSet transactionSet = statement.executeQuery(getTransactionInfo);
         transactionSet.next();
         String symbol = transactionSet.getString("stockSym");
-        int totalCount = transactionSet.getInt("totalCount");
+        float totalCount = transactionSet.getFloat("totalCount");
         float price = transactionSet.getFloat("price");
         float balance = getUserBalance(statement);
         if ((balance - (price * totalCount) - 20) < 0) {
@@ -700,7 +707,7 @@ public class TraderInterface {
         ResultSet sellCountsSet = statement.executeQuery(getSellCountsBuy);
         Statement subStatement = connection.createStatement();
         while (sellCountsSet.next()) {
-            int amount = sellCountsSet.getInt("amount");
+            float amount = sellCountsSet.getFloat("amount");
             float sellPrice = sellCountsSet.getFloat("price");
             String updateStockAmount = "UPDATE StockAmount SET amount = amount + " + amount + " WHERE stockAccId = "
                     + stockAcc + " AND price = " + sellPrice;

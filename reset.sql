@@ -66,7 +66,7 @@ CREATE TABLE Stock(
 CREATE TABLE StockAccount(
     stockAccId INT NOT NULL,
     customerId INT NOT NULL,
-    balance INT,
+    balance FLOAT,
     symbol CHAR(3) NOT NULL,
     PRIMARY KEY(symbol, customerId),
     UNIQUE (stockAccId),
@@ -76,7 +76,7 @@ CREATE TABLE StockAccount(
 
 CREATE TABLE StockAmount(
     stockAccId INT,
-    amount INT,
+    amount FLOAT,
     price FLOAT,
     PRIMARY KEY(stockAccId, price),
     FOREIGN KEY (stockAccId) references StockAccount (stockAccId)
@@ -98,7 +98,7 @@ CREATE Table Transaction(
 
 CREATE Table MoneyTransaction(
     transid INT NOT NULL,
-    amountMoney INT,
+    amountMoney FLOAT,
     customerId INT NOT NULL,
     PRIMARY KEY(transid, customerId),
     FOREIGN KEY(customerId) references Customer(markAccId) ON DELETE CASCADE,
@@ -119,7 +119,7 @@ CREATE Table BuyTransaction(
     customerId INT NOT NULL,
     stockSym CHAR(3) NOT NULL,
     price FLOAT,
-    buycount INT,
+    buycount FLOAT,
     PRIMARY KEY(transid, stockSym, customerId),
     FOREIGN KEY(stockSym, customerId) references StockAccount(symbol, customerId) ON DELETE CASCADE,
     FOREIGN KEY(transid) references Transaction ON DELETE CASCADE
@@ -127,10 +127,11 @@ CREATE Table BuyTransaction(
 
 CREATE Table SellTransaction(
     transid INT NOT NULL,
-    totalCount INT,
+    totalCount FLOAT,
     customerId INT NOT NULL,
     stockSym CHAR(3) NOT NULL,
     price FLOAT,
+    profit FLOAT,
     PRIMARY KEY(transid, stockSym, customerId),
     FOREIGN KEY(stockSym, customerId) references StockAccount(symbol, customerId) ON DELETE CASCADE,
     FOREIGN KEY(transid) references Transaction ON DELETE CASCADE
@@ -141,7 +142,7 @@ CREATE Table SellCountsBuy(
     stockSym CHAR(3),
     custAcc INT,
     price FLOAT,
-    amount INT,
+    amount FLOAT,
     PRIMARY KEY (sellid, stockSym, custAcc, price),
     FOREIGN KEY(sellid, stockSym, custAcc) references SellTransaction(transid, stockSym, customerId) ON DELETE CASCADE
 );
