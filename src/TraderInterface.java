@@ -89,7 +89,11 @@ public class TraderInterface {
                     ResultSet resultSet = query.executeQuery(
                             "SELECT * FROM Customer WHERE username = '" + username + "'");
                     resultSet.next();
-                    if (resultSet.getString("cpassword").equals(password)) {
+                    if (!resultSet.getString("cpassword").trim().equals(password.trim())) {
+                        System.out.println(password);
+                        System.out.println(resultSet.getString("cpassword"));
+                        System.out.println(password.length());
+                        System.out.println(resultSet.getString("cpassword").length());
                         System.out.println("Incorrect Username/Password :(");
                         return;
                     }
@@ -209,6 +213,10 @@ public class TraderInterface {
                 System.out.println("Market is closed. Check back later.");
                 return;
             }
+            if(split.length < 2){
+                System.out.println("Need to include symbol and amount.");
+                return;
+            }
             String symbol = split[1];
             float amount = Float.parseFloat(split[2]);
 
@@ -295,6 +303,10 @@ public class TraderInterface {
         else if(query.contains("Sell")){
             if(!marketOpen){
                 System.out.println("Market is closed. Check back later.");
+                return;
+            }
+            if(split.length%2 == 0 || split.length < 3){
+                System.out.println("Incorrect sell format");
                 return;
             }
             String symbol = split[1];
@@ -520,6 +532,10 @@ public class TraderInterface {
             }
         }
         else if(query.contains("Symbol")){
+            if(split.length < 2){
+                System.out.println("Need to include symbol name");
+                return;
+            }
             String symbol = split[1];
             String getStock = "SELECT * FROM Stock WHERE symbol = '" + symbol + "'";
             Statement statement = connection.createStatement();
