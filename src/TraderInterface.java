@@ -44,7 +44,6 @@ public class TraderInterface {
     final static String DB_PASSWORD = "Password123!@#";
     final static Scanner scanner = new Scanner(System.in);
     static String currentUser;
-    static String date;
     static int markAccId;
 
     // This method creates a database connection using
@@ -105,11 +104,11 @@ public class TraderInterface {
                 System.out.println("You're in! What do you wanna do.");
             }
             else{
-                System.out.println("What is your firstname?");
+                System.out.println("What is your name?");
                 String firstname = scanner.nextLine();
                 System.out.println("What state are you in? (Two-Digit)");
                 String state = scanner.nextLine();
-                System.out.println("What is your phone number?");
+                System.out.println("What is your phone number [(xxx)xxxxxxx]?");
                 String phone = scanner.nextLine();
                 System.out.println("What is your email address?");
                 String email = scanner.nextLine();
@@ -136,7 +135,7 @@ public class TraderInterface {
                     }
                     result = validate(connection, username, taxid);
                 }
-                String insertCustomer = "INSERT INTO Customer VALUES (" + firstname + ", " + username + ", " + password + ", " + state + ","  + phone + ", "  + email + "," + taxid + ", " + newMark + ", 1000)";
+                String insertCustomer = "INSERT INTO Customer VALUES ('" + username + "', '" + firstname + "', '" + password + "', '" + state + "','"  + phone + "', '"  + email + "'," + taxid + ", " + newMark + ", 1000)";
                 Statement statement = connection.createStatement();
                 try{
                     statement.executeQuery(insertCustomer);
@@ -144,10 +143,10 @@ public class TraderInterface {
                     e.printStackTrace();
                     System.out.println("Something went wrong with registering");
                 }
+                currentUser = username;
+                markAccId = newMark;
             }
             
-            
-            date = "2023-10-16";
             String input;
             while (!(input = scanner.nextLine()).equals("exit")) {
 
@@ -162,6 +161,8 @@ public class TraderInterface {
     }
 
     static void handleOutput(OracleConnection connection, DatabaseMetaData dbmd, String query) throws SQLException{
+        boolean marketOpen = checkMarket(connection);
+        String date = getDate(connection).toString();
         String[] split  = query.split(" ");
         if(query.contains("Deposit")){
             String amount = split[1];
@@ -204,6 +205,10 @@ public class TraderInterface {
         }
 
         else if(query.contains("Buy")){
+            if(!marketOpen){
+                System.out.println("Market is closed. Check back later.");
+                return;
+            }
             String symbol = split[1];
             int amount = Integer.parseInt(split[2]);
 
@@ -288,6 +293,10 @@ public class TraderInterface {
 
         // Sell [symbol] [number of stock] [map of num of stock to og price (4 100 5 200)]
         else if(query.contains("Sell")){
+            if(!marketOpen){
+                System.out.println("Market is closed. Check back later.");
+                return;
+            }
             String symbol = split[1];
             int amount = Integer.parseInt(split[2]);
 
@@ -375,7 +384,11 @@ public class TraderInterface {
 
             
         }
-        else if(query.contains("Cancel")){            
+        else if(query.contains("Cancel")){  
+            if(!marketOpen){
+                System.out.println("Market is closed. Check back later.");
+                return;
+            }          
             try(Statement statement = connection.createStatement()){
                 String getRecent = "SELECT MAX(T.transid) as max FROM (SELECT M.transid " +
                 "FROM MoneyTransaction M " +
@@ -396,7 +409,7 @@ public class TraderInterface {
                 if(recentSet.next()){
                     int mostRecent = recentSet.getInt("max");
                     System.out.println(mostRecent);
-                    String getRecentType = "SELECT ttype FROM Transaction WHERE transid = " + mostRecent;
+                    String getRecentType = "SELECT * FROM Transaction WHERE transid = " + mostRecent;
                     ResultSet recentType = statement.executeQuery(getRecentType);
                     recentType.next();
                     int type = recentType.getInt("ttype");
@@ -404,12 +417,16 @@ public class TraderInterface {
                         System.out.println("most previous transaction was not buy or sell. bad.");
                         return;
                     }
+                    // if(recentType.getDate("tdate") != getDate(connection)){
+                    //     System.out.println("Cannot cancel transaction made on another day.");
+                    //     return;
+                    // }
                     if(type == 2){
-                        revertBuy(connection, statement, mostRecent);
+                        revertBuy(connection, statement, mostRecent, date);
                     }
                     //TODO: need to make sure to print out what transaction you are cancelling
                     else{
-                        revertSell(connection, statement, mostRecent);
+                        revertSell(connection, statement, mostRecent, date);
                     }
                 }
                 else{
@@ -423,10 +440,26 @@ public class TraderInterface {
             System.out.println("Heres your balance:");
             Statement statement = connection.createStatement();
             float balance = getUserBalance(statement);
-            System.out.println("$" + balance);
-            
+            String a = String.valueOf(balance);
+            if(a.indexOf('.') == -1){
+                System.out.println("$" + balance + ".00");
+                return;
+            }
+            if(a.indexOf('.') == a.length()-2){
+                System.out.println("$" + balance + "0");
+                return;
+            }
+
+            if(a.indexOf('.') < a.length()-2){
+                System.out.println("$" + a.substring(0, a.indexOf('.')+ 3));
+                return;
+            }
         }
         else if(query.contains("Show Transaction")){
+            if(split.length < 3){
+                System.out.println("Need to include symbol.");
+                return;
+            }
             try{String symbol = split[2];
                 System.out.println("symbol: " + symbol);
                 String a = "SELECT DISTINCT T.transid FROM (" + 
@@ -454,14 +487,14 @@ public class TraderInterface {
                     tranDetailSet.next();
 
                     int type = tranDetailSet.getInt("ttype");
-                    Date date = tranDetailSet.getDate("tdate");
+                    Date tdate = tranDetailSet.getDate("tdate");
                     if(type == 2){
                         String getBuy = "SELECT * FROM BuyTransaction WHERE transid = " + transid;
                         ResultSet getBuySet = subStatement.executeQuery(getBuy);
                         getBuySet.next();
                         float price = getBuySet.getFloat("price");
                         int buycount = getBuySet.getInt("buycount");
-                        System.out.println(date + ": Buy - " + symbol + ", " + buycount + " at " + price);
+                        System.out.println(tdate + ": Buy - " + symbol + ", " + buycount + " at " + price);
                     }
                     else if(type == 3){
                         String getSell = "SELECT * FROM SellTransaction WHERE transid = " + transid;
@@ -469,10 +502,10 @@ public class TraderInterface {
                         getSellSet.next();
                         float price = getSellSet.getFloat("price");
                         int Sellcount = getSellSet.getInt("totalCount");
-                        System.out.println(date + ": Sell - " + symbol + ", " + Sellcount + " at " + price);  
+                        System.out.println(tdate + ": Sell - " + symbol + ", " + Sellcount + " at " + price);  
                     }
                     else{
-                        System.out.println(date + ": Cancel, previous transaction.");
+                        System.out.println(tdate + ": Cancelled.");
                     }
                 }
             } catch (SQLException e){
@@ -484,7 +517,10 @@ public class TraderInterface {
             String getStock = "SELECT * FROM Stock WHERE symbol = '" + symbol + "'";
             Statement statement = connection.createStatement();
             ResultSet stockSet = statement.executeQuery(getStock);
-            stockSet.next();
+            if(!stockSet.next()){
+                System.out.println("No symbol found!");
+                return;
+            }
             float curPrice = stockSet.getFloat("curPrice");
             String star = stockSet.getString("starname");
             Date dob = stockSet.getDate("dob");
@@ -495,14 +531,20 @@ public class TraderInterface {
             
         }
         else if(query.contains("Movie")){
+            if(split.length < 3){
+                System.out.println("Not full movie command");
+            }
             String year = split[1];
             int firstSpace = query.indexOf(' ', 0);
             int secondSpace = query.indexOf(' ', firstSpace + 1);
             String movie = query.substring(secondSpace + 1);
-            String getMovie = "SELECT * FROM Movie WHERE title = '" + movie + "' AND year = " + year;
+            String getMovie = "SELECT * FROM Movie WHERE title = '" + movie + "' AND prod_year = " + year;
             Statement statement = connection.createStatement();
             ResultSet movieSet = statement.executeQuery(getMovie);
-            movieSet.next();
+            if(!movieSet.next()){
+                System.out.println("No movie found!");
+                return;
+            }
             int prodYear = movieSet.getInt("prod_year");
             float rating = movieSet.getFloat("rating");
             System.out.println("Movie Info");
@@ -592,7 +634,7 @@ public class TraderInterface {
         return 0;
     }
 
-    static void revertBuy(OracleConnection connection, Statement statement, int transid) throws SQLException {
+    static void revertBuy(OracleConnection connection, Statement statement, int transid, String date) throws SQLException {
         // must change back everything that happened
         // remove added stocks in stockAmount
         // remove added balance in stockAccount
@@ -628,9 +670,11 @@ public class TraderInterface {
         String updateMark = "UPDATE Customer SET balance = balance + " + value + " WHERE username = '" + currentUser
                 + "'";
         statement.executeUpdate(updateMark);
+        String removeTransaction = "DELETE FROM Transaction WHERE transid = " + transid;
+        statement.executeUpdate(removeTransaction);
     }
 
-    static void revertSell(OracleConnection connection, Statement statement, int transid) throws SQLException {
+    static void revertSell(OracleConnection connection, Statement statement, int transid, String date) throws SQLException {
         // need to
         String getTransactionInfo = "SELECT * FROM SellTransaction WHERE transid = " + transid;
         ResultSet transactionSet = statement.executeQuery(getTransactionInfo);
@@ -674,6 +718,8 @@ public class TraderInterface {
         String updateMark = "UPDATE Customer SET balance = balance - " + value + " WHERE username = '" + currentUser
                 + "'";
         statement.executeUpdate(updateMark);
+        String removeTransaction = "DELETE FROM Transaction WHERE transid = " + transid;
+        statement.executeUpdate(removeTransaction);
     }
 
     static int validate(OracleConnection connection, String username, String taxid) throws SQLException{
@@ -688,7 +734,7 @@ public class TraderInterface {
             return 3;
         }
     
-        String getTaxid = "SELECT * FROM Customer WHERE taxid = " + taxid;
+        String getTaxid = "SELECT * FROM Customer WHERE tax_id = " + taxid;
 
         ResultSet taxIdSet = statement.executeQuery(getTaxid);
         if(taxIdSet.next()){
@@ -696,6 +742,26 @@ public class TraderInterface {
         }
 
         return 0;
+    }
+
+    static Date getDate(OracleConnection connection) throws SQLException{
+        String getDate = "SELECT * FROM CurrentDate";
+        Statement statement = connection.createStatement();
+        ResultSet dateSet = statement.executeQuery(getDate);
+        dateSet.next();
+        return dateSet.getDate("currDate");
+    }
+
+    static boolean checkMarket(OracleConnection connection) throws SQLException{
+        String market = "SELECT * FROM Market";
+        Statement statement = connection.createStatement();
+        ResultSet marketSet = statement.executeQuery(market);
+        marketSet.next();
+        if(marketSet.getInt("isOpen") == 0){
+            return false;
+        }
+        return true;
+
     }
 
 }
