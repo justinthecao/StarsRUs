@@ -155,6 +155,25 @@
             
             if (query.contains("Add Interest")) {
 
+                Integer monthLength = localDate.lengthOfMonth();
+
+                if (today != monthLength) {
+                    System.out.println("Not end of month yet!");
+                    return;
+                }
+
+                Statement openQuery = connection.createStatement();
+                ResultSet openSet = openQuery.executeQuery(
+                    "SELECT isOpen FROM Market"
+                );
+
+                openSet.next();
+
+                if (openSet.getInt("isOpen") == 1) {
+                    System.out.println("Market has not closed yet!");
+                    return;
+                }
+
                 try (Statement accountsQuery = connection.createStatement()) {
                     Statement interestQuery = connection.createStatement();
                     ResultSet AccountsSet = accountsQuery.executeQuery(
@@ -251,7 +270,7 @@
 
                 while (stockAccountsSet.next()) {
                     String symbol = stockAccountsSet.getString("symbol");
-                    String stockAccountId = stockAccountsSet.getString("stockAccId");
+                    String stockAccountId = Integer.toString(stockAccountsSet.getInt("stockAccId"));
 
                     System.out.println("Printing Information for Stock Account: " + stockAccountId + " for stock: " + symbol);
 
@@ -265,18 +284,18 @@
 
                     System.out.println("Buy Transactions: ");
                     while (buySet.next()) {
-                        System.out.println("Bought #" + Integer.toString(buySet.getInt("buycount")) + " " + symbol + "'s at Price: " + Integer.toString(buySet.getInt("price")));
+                        System.out.println("Bought #" + Float.toString(buySet.getFloat("buycount")) + " " + symbol + "'s at Price: " + Float.toString(buySet.getFloat("price")));
                     }
 
                     ResultSet sellSet = transactionQuery.executeQuery(
-                        "SELECT SellTransaction.totalCount, SellTransaction.price " +
+                        "SELECT SellTransaction.totalCount, SellTransaction.price, SellTransaction.profit " +
                         "FROM SellTransaction, Transaction " +
                         "WHERE SellTransaction.customerId = " + customerId + " AND SellTransaction.stockSym = '" + symbol + "' AND Transaction.transid = SellTransaction.transid AND EXTRACT(MONTH FROM Transaction.tdate) = " + currMonth
                     );
 
                     System.out.println("Sell Transactions: ");
                     while (sellSet.next()) {
-                        System.out.println("Bought #" + Integer.toString(sellSet.getInt("totalCount")) + " " + symbol + "'s at Price: " + Integer.toString(sellSet.getInt("price")));
+                        System.out.println("Sold #" + Float.toString(sellSet.getFloat("totalCount")) + " " + symbol + "'s at Price: " + Float.toString(sellSet.getFloat("price")) + " w/ Profit: " + Float.toString(sellSet.getFloat("profit")));
                     }
                 }
 
@@ -288,7 +307,7 @@
 
                 balanceSet.next();
 
-                System.out.println("Initial Balance: " + Integer.toString(balanceSet.getInt("currBalance")));
+                System.out.println("Initial Balance: " + Float.toString(balanceSet.getFloat("currBalance")));
 
                 balanceSet = balanceQuery.executeQuery(
                     "SELECT currBalance FROM MarketAccountHistory WHERE markAccId = " + customerId + " AND EXTRACT(MONTH FROM currDate) = " + currMonth +
@@ -297,10 +316,7 @@
 
                 balanceSet.next();
 
-                System.out.println("Final Balance: " + Integer.toString(balanceSet.getInt("currBalance")));
-
-
-
+                System.out.println("Final Balance: " + Float.toString(balanceSet.getFloat("currBalance")));
 
                 
             }
@@ -309,48 +325,79 @@
 
                 Statement accountsQuery = connection.createStatement();
                 ResultSet AccountsSet = accountsQuery.executeQuery(
-                    "SELECT markAccId FROM Customer"
+                    "SELECT markAccId, username FROM Customer"
                 );
 
-                List<String> activeIds= new ArrayList<String>();
+                List<String> activeUserNames= new ArrayList<String>();
 
                 while (AccountsSet.next()) {
                     String marketId = Integer.toString(AccountsSet.getInt("markAccId"));
+                    String username = (AccountsSet.getString("username"));
+
                     System.out.println("Checking Activity of : " + marketId);
 
-                    Integer totalShares = 0;
+                    Float totalShares = (float) 0;
 
                     Statement shareCount = connection.createStatement();
                     ResultSet buySet = shareCount.executeQuery(
-                        "SELECT buycount " +
-                        "FROM BuyTransaction " +
-                        "WHERE customerId = " + marketId
+                        "SELECT BuyTransaction.buycount " +
+                        "FROM BuyTransaction, Transaction" +
+                        "WHERE BuyTransaction.customerId = " + marketId + " AND BuyTransaction.transid = Transaction.transid AND EXTRACT(MONTH FROM Transaction.tdate) = " + currMonth
                     );
 
                     while (buySet.next()) {
-                        totalShares += buySet.getInt("buycount");
+                        totalShares += buySet.getFloat("buycount");
                     }
 
                     System.out.println("Retrieved Buy Count: " + totalShares);
 
                     ResultSet sellSet = shareCount.executeQuery(
-                        "SELECT totalCount " +
-                        "FROM SellTransaction " +
-                        "WHERE customerId = " + marketId
+                        "SELECT SellTransaction.totalCount " +
+                        "FROM SellTransaction, Transaction " +
+                        "WHERE SellTransaction.customerId = " + marketId + " AND SellTransaction.transid = Transaction.transid AND EXTRACT(MONTH FROM Transaction.tdate) = " + currMonth
                     );
 
                     while (sellSet.next()) {
-                        totalShares += sellSet.getInt("totalCount");
+                        totalShares += sellSet.getFloat("totalCount");
                     }
 
-                    if (totalShares >= 1000) activeIds.add(marketId);
+                    if (totalShares >= 1000) activeUserNames.add(username.trim());
 
                 }
 
-                System.out.println("List of Active Accounts: " + activeIds);
+                System.out.println("List of Active Accounts: " + activeUserNames);
 
             }
             else if (query.contains("Generate DTER")) {
+
+                Statement accountsQuery = connection.createStatement();
+                ResultSet AccountsSet = accountsQuery.executeQuery(
+                        "SELECT markAccId, username FROM Customer"
+                    );
+
+                List<String> dterUserNames= new ArrayList<String>();
+
+                while (AccountsSet.next()) {
+                    String marketId = Integer.toString(AccountsSet.getInt("markAccId"));
+                    String username = (AccountsSet.getString("username"));
+                    Float totalProfit = (float) 0;
+
+                    Statement profitQuery = connection.createStatement();
+                    ResultSet profitSet = profitQuery.executeQuery(
+                        "SELECT SellTransaction.profit " +
+                        "FROM SellTransaction, Transaction " +
+                        "WHERE SellTransaction.customerId = " + marketId + " AND SellTransaction.transid = Transaction.transid AND EXTRACT(MONTH FROM Transaction.tdate) = " + currMonth
+                    );
+                    
+                    while(profitSet.next()){
+                        totalProfit += profitSet.getFloat("profit");
+                    }
+
+                    if (totalProfit >= 10000) dterUserNames.add(username.trim());
+
+                }
+
+                System.out.println("List of DTER Accounts: " + dterUserNames);
 
             }
             else if (query.contains("Customer Report")) {
@@ -364,7 +411,7 @@
 
                 balanceSet.next();
 
-                System.out.println("Current Balance: " + Integer.toString(balanceSet.getInt("balance")));
+                System.out.println("Current Balance: " + Float.toString(balanceSet.getFloat("balance")));
 
                 System.out.println("List of Stock Accounts: ");
 
@@ -376,12 +423,36 @@
                 while (stockAccountSet.next()) {
                     String sym = stockAccountSet.getString("symbol");
                     String stockId = Integer.toString(stockAccountSet.getInt("stockAccId"));
-                    String balance = Integer.toString(stockAccountSet.getInt("balance"));
+                    String balance = Float.toString(stockAccountSet.getFloat("balance"));
                     System.out.println("Stock Account ID: " + stockId + " | Stock Symbol: " + sym + " | Balance: " + balance);
                 }
 
             }
             else if (query.contains("Delete Transactions")) {
+                System.out.println("Deleting All Transactions");
+
+                Statement deleteQuery = connection.createStatement();
+                deleteQuery.executeUpdate(
+                    "DELETE * FROM SellTransaction"
+                );
+
+                deleteQuery.executeUpdate(
+                    "DELETE * FROM BuyTransaction"
+                );
+
+                deleteQuery.executeUpdate(
+                    "DELETE * FROM CancelTransaction"
+                );
+
+                deleteQuery.executeUpdate(
+                    "DELETE * FROM MoneyTransaction"
+                );
+
+                deleteQuery.executeUpdate(
+                    "DELETE * FROM Transaction"
+                );
+
+                System.out.println("All Transactions have been deleted");
 
             }
             else if (query.contains("Open Market")) {
@@ -444,7 +515,7 @@
             }
             else if (query.contains("Set Stock Price")) {
                 String symbol = split[3];
-                Integer newPrice = Integer.parseInt(split[4]);
+                String newPrice = Float.toString(Float.parseFloat(split[4]));
 
                 System.out.println("Setting price of '" + symbol + "' to " + newPrice);
 
