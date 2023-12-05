@@ -352,8 +352,12 @@ public class TraderInterface {
                 HashMap<Float, Float> amounts = new HashMap<Float, Float>();
                 while(stockAmounts.next()){
                     amounts.put(stockAmounts.getFloat("price"), stockAmounts.getFloat("amount"));
+                    System.out.println("Price" + stockAmounts.getFloat("price")
+                    );
+                    System.out.println("Amount" + stockAmounts.getFloat("amount"));
                 }
                 for(Float i: sell.keySet()){
+                    System.out.println(i);
                     if(!amounts.keySet().contains(i) || amounts.get(i) < sell.get(i)){
                         System.out.println("Either you never bought at one of these prices or you're trying to sell too much at one of those prices");
                         return;
@@ -425,7 +429,6 @@ public class TraderInterface {
                 ResultSet recentSet = statement.executeQuery(getRecent);
                 if(recentSet.next()){
                     int mostRecent = recentSet.getInt("max");
-                    System.out.println(mostRecent);
                     String getRecentType = "SELECT * FROM Transaction WHERE transid = " + mostRecent;
                     ResultSet recentType = statement.executeQuery(getRecentType);
                     recentType.next();
@@ -479,6 +482,7 @@ public class TraderInterface {
                 System.out.println("Need to include symbol.");
                 return;
             }
+            System.out.println("\n");
             try{String symbol = split[2];
                 System.out.println("symbol: " + symbol);
                 String a = "SELECT DISTINCT T.transid FROM (" + 
@@ -536,6 +540,7 @@ public class TraderInterface {
                 System.out.println("Need to include symbol name");
                 return;
             }
+            System.out.println("\n");
             String symbol = split[1];
             String getStock = "SELECT * FROM Stock WHERE symbol = '" + symbol + "'";
             Statement statement = connection.createStatement();
@@ -570,7 +575,7 @@ public class TraderInterface {
             }
             int prodYear = movieSet.getInt("prod_year");
             float rating = movieSet.getFloat("rating");
-            System.out.println("Movie Info");
+            System.out.println("\nMovie Info");
             System.out.println("===========");
             System.out.println(movie);
             System.out.println("  Production year: " + prodYear);
@@ -590,6 +595,7 @@ public class TraderInterface {
             }
         }   
         else if(query.contains("Top")){
+            System.out.println("\n");
             String range = split[1];
             int firstyear = Integer.parseInt(range.substring(0, range.indexOf('-')));
             int secondyear = Integer.parseInt(range.substring(range.indexOf('-') + 1));
@@ -693,7 +699,7 @@ public class TraderInterface {
                 + markAccId + ")";
         statement.executeUpdate(addCancelTransaction);
         String updateStockAmount = "UPDATE StockAmount SET amount = amount - " + buycount + " WHERE stockAccId = "
-                + stockAcc;
+                + stockAcc + " AND price = " + price;
         statement.executeUpdate(updateStockAmount);
         String updateStockAccount = "UPDATE StockAccount SET balance = balance - " + buycount + " WHERE stockAccId = "
                 + stockAcc;
