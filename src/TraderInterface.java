@@ -115,7 +115,7 @@ public class TraderInterface {
                     String username = scanner.nextLine();
                     System.out.print("New Password: ");
                     String password = scanner.nextLine();
-                    int newMark = getNewMarket(connection);
+                    int newMark = getAccId(connection);
                     int result = validate(connection, username, taxid);
                     while(result != 0){
                         if(result == 1){
@@ -254,7 +254,7 @@ public class TraderInterface {
                 ResultSet stockAccSet = statement.executeQuery(getAllStock);
                 int stockAccId;
                 if(!stockAccSet.next()){
-                    stockAccId = getNewStockAccId(statement);
+                    stockAccId = getAccId(connection);
                     String addStockAcc = "INSERT INTO StockAccount VALUES (" + stockAccId+ ", " + markAccId + ", 0, '" + symbol + "')";
                     statement.executeQuery(addStockAcc);
                 }
@@ -690,23 +690,17 @@ public class TraderInterface {
         return newTransId;
     }
 
-    static int getNewStockAccId(Statement statement) throws SQLException {
+    static int getAccId(OracleConnection connection) throws SQLException {
         String getMaxTransId = "SELECT MAX(stockAccId) as max FROM StockAccount";
+        Statement statement = connection.createStatement();
         ResultSet transSet = statement.executeQuery(getMaxTransId);
         transSet.next();
-        if (!(transSet.getString("max") == null)) {
-            return transSet.getInt("max") + 1;
-        }
-        return 0;
-    }
-
-    static int getNewMarket(OracleConnection connection) throws SQLException{
         String getMaxCustId = "SELECT MAX(markAccId) as max FROM Customer";
-        Statement statement = connection.createStatement();
-        ResultSet CustSet = statement.executeQuery(getMaxCustId);
+        Statement statementC = connection.createStatement();
+        ResultSet CustSet = statementC.executeQuery(getMaxCustId);
         CustSet.next();
-        if (!(CustSet.getString("max") == null)) {
-            return CustSet.getInt("max") + 1;
+        if (!(transSet.getString("max") == null && !(CustSet.getString("max") == null))) {
+            return Math.max(transSet.getInt("max"),CustSet.getInt("max"))  + 1;
         }
         return 0;
     }
