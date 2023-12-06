@@ -26,6 +26,8 @@ import java.util.HashMap;
 import java.util.Properties;
 import java.util.Scanner;
 
+import javax.naming.spi.DirStateFactory.Result;
+
 import oracle.jdbc.pool.OracleDataSource;
 import oracle.jdbc.OracleConnection;
 import java.sql.DatabaseMetaData;
@@ -51,37 +53,27 @@ public class TraderInterface {
     public static void main(String args[]) throws SQLException {
         Properties info = new Properties();
 
-        System.out.println("Initializing connection properties...");
         info.put(OracleConnection.CONNECTION_PROPERTY_USER_NAME, DB_USER);
         info.put(OracleConnection.CONNECTION_PROPERTY_PASSWORD, DB_PASSWORD);
         info.put(OracleConnection.CONNECTION_PROPERTY_DEFAULT_ROW_PREFETCH, "20");
 
-        System.out.println("Creating OracleDataSource...");
         OracleDataSource ods = new OracleDataSource();
 
-        System.out.println("Setting connection properties...");
         ods.setURL(DB_URL);
         ods.setConnectionProperties(info);
 
         // With AutoCloseable, the connection is closed automatically
         try (OracleConnection connection = (OracleConnection) ods.getConnection()) {
-            System.out.println("Connection established!");
             // Get JDBC driver name and version
             DatabaseMetaData dbmd = connection.getMetaData();
-            System.out.println("Driver Name: " + dbmd.getDriverName());
-            System.out.println("Driver Version: " + dbmd.getDriverVersion());
             // Print some connection properties
-            System.out.println(
-                    "Default Row Prefetch Value: " + connection.getDefaultRowPrefetch());
-            System.out.println("Database username: " + connection.getUserName());
-            System.out.println();
             // Perform some database operations
             // insertTA(connection);
-
+            System.out.println("");
             
             System.out.println("Do you want to Login or Register?");
             if(scanner.nextLine().toLowerCase().equals("login")){
-                System.out.println("Login\n======== \nUsername: ");
+                System.out.println("\nLogin\n======== \nUsername: ");
                 String username = scanner.nextLine();
                 System.out.println("Password: ");
                 String password = scanner.nextLine();
@@ -105,52 +97,57 @@ public class TraderInterface {
                     return;
                 }
                 currentUser = username;
-                System.out.println("You're in! What do you wanna do.");
+                System.out.println("\nYou're in! What do you wanna do.");
             }
             else{
-                System.out.println("What is your name?");
-                String firstname = scanner.nextLine();
-                System.out.println("What state are you in? (Two-Digit)");
-                String state = scanner.nextLine();
-                System.out.println("What is your phone number [(xxx)xxxxxxx]?");
-                String phone = scanner.nextLine();
-                System.out.println("What is your email address?");
-                String email = scanner.nextLine();
-                System.out.println("What is your tax id");
-                String taxid = scanner.nextLine();
-                System.out.print("New Username: ");
-                String username = scanner.nextLine();
-                System.out.print("New Password: ");
-                String password = scanner.nextLine();
-                int newMark = getNewMarket(connection);
-                int result = validate(connection, username, taxid);
-                while(result != 0){
-                    if(result == 1){
-                        System.out.println("Try a new taxid:");
-                        taxid = scanner.nextLine();
-                    }
-                    else if(result == 2){
-                        System.out.println("Try a new username:");
-                        username = scanner.nextLine();
-                    }
-                    else if(result == 3){
-                        System.out.println("Taxid is at most 9 digits, try a new taxid:");
-                        taxid = scanner.nextLine();
-                    }
-                    result = validate(connection, username, taxid);
-                }
-                String insertCustomer = "INSERT INTO Customer VALUES ('" + username + "', '" + firstname + "', '" + password + "', '" + state + "','"  + phone + "', '"  + email + "'," + taxid + ", " + newMark + ", 1000)";
-                Statement statement = connection.createStatement();
                 try{
-                    statement.executeQuery(insertCustomer);
-                }catch(SQLException e){
-                    e.printStackTrace();
-                    System.out.println("Something went wrong with registering");
-                }
-                currentUser = username;
-                markAccId = newMark;
-                System.out.println("You're in! What do you wanna do.");
+                    System.out.println("\nWhat is your name?");
+                    String firstname = scanner.nextLine();
+                    System.out.println("What state are you in? (Two-Digit)");
+                    String state = scanner.nextLine();
+                    System.out.println("What is your phone number [(xxx)xxxxxxx]?");
+                    String phone = scanner.nextLine();
+                    System.out.println("What is your email address?");
+                    String email = scanner.nextLine();
+                    System.out.println("What is your tax id");
+                    String taxid = scanner.nextLine();
+                    System.out.print("New Username: ");
+                    String username = scanner.nextLine();
+                    System.out.print("New Password: ");
+                    String password = scanner.nextLine();
+                    int newMark = getNewMarket(connection);
+                    int result = validate(connection, username, taxid);
+                    while(result != 0){
+                        if(result == 1){
+                            System.out.println("Try a new taxid:");
+                            taxid = scanner.nextLine();
+                        }
+                        else if(result == 2){
+                            System.out.println("Try a new username:");
+                            username = scanner.nextLine();
+                        }
+                        else if(result == 3){
+                            System.out.println("Taxid is at most 9 digits, try a new taxid:");
+                            taxid = scanner.nextLine();
+                        }
+                        result = validate(connection, username, taxid);
+                    }
+                    String insertCustomer = "INSERT INTO Customer VALUES ('" + username + "', '" + firstname + "', '" + password + "', '" + state + "','"  + phone + "', '"  + email + "'," + taxid + ", " + newMark + ", 1000)";
+                    Statement statement = connection.createStatement();
+                    try{
+                        statement.executeQuery(insertCustomer);
+                    }catch(SQLException e){
+                        e.printStackTrace();
+                        System.out.println("Something went wrong with registering");
+                    }
+                    currentUser = username;
+                    markAccId = newMark;
+                    System.out.println("\nYou're in! What do you wanna do.");
 
+                } catch(Exception e){
+                    System.out.println("The system encountered an error, try registering again.");
+                }
+                
             }
             
             String input;
@@ -283,7 +280,7 @@ public class TraderInterface {
                     statement.executeUpdate(insertPriceAmount);
                 }
 
-                System.out.println("Bought " + amount + " " + symbol + "'s at " + curPrice );
+                System.out.println("Bought " + amount + " " + symbol + "'s at $" + curPrice );
             } catch(Exception e){
                 e.printStackTrace();
 
@@ -352,12 +349,8 @@ public class TraderInterface {
                 HashMap<Float, Float> amounts = new HashMap<Float, Float>();
                 while(stockAmounts.next()){
                     amounts.put(stockAmounts.getFloat("price"), stockAmounts.getFloat("amount"));
-                    System.out.println("Price" + stockAmounts.getFloat("price")
-                    );
-                    System.out.println("Amount" + stockAmounts.getFloat("amount"));
                 }
                 for(Float i: sell.keySet()){
-                    System.out.println(i);
                     if(!amounts.keySet().contains(i) || amounts.get(i) < sell.get(i)){
                         System.out.println("Either you never bought at one of these prices or you're trying to sell too much at one of those prices");
                         return;
@@ -396,7 +389,7 @@ public class TraderInterface {
                 Float toRemove = amount * curPrice - 20;
                 String depositQuery = "UPDATE Customer SET balance = balance + (" + toRemove + ") WHERE username = '" + currentUser + "'";
                 statement.executeUpdate(depositQuery); 
-                System.out.println("Sold " + amount + " " + symbol + "'s");
+                System.out.println("Sold " + amount + " " + symbol + "'s at $" + curPrice);
                 
             } catch(Exception e){
                 e.printStackTrace();
@@ -531,6 +524,7 @@ public class TraderInterface {
                     }
                 } else{
                     System.out.println("No Transactions for " + symbol);
+                    return;
                 }
                 while(transaction.next()){
                     int transid = transaction.getInt("transid");
@@ -586,42 +580,57 @@ public class TraderInterface {
             System.out.println("   Current Price: " + curPrice);
             System.out.println("   Actor: " + star.trim());
             System.out.println("   Dob: " + dob);
+            System.out.println("   Movies: ");
+            String contract = "SELECT * FROM Contract WHERE symbol = '" + symbol + "'";
+            ResultSet contractSet = statement.executeQuery(contract);
+            if(contractSet.next()){
+                System.out.println("      " + contractSet.getInt("prodyear") + ", " + contractSet.getString("title").trim() + ": " + contractSet.getString("roletype").trim() + ", " + contractSet.getString("value"));
+            }else{
+                System.out.println("       No movies");
+            }
+            while(contractSet.next()){
+                System.out.println("      " + contractSet.getInt("prodyear") + ", " + contractSet.getString("title").trim() + ": " + contractSet.getString("roletype").trim() +  ", " + contractSet.getString("value"));
+            }
             
         }
         else if(query.contains("Movie")){
             if(split.length < 3){
                 System.out.println("Not full movie command");
             }
-            String year = split[1];
-            int firstSpace = query.indexOf(' ', 0);
-            int secondSpace = query.indexOf(' ', firstSpace + 1);
-            String movie = query.substring(secondSpace + 1);
-            String getMovie = "SELECT * FROM Movie WHERE title = '" + movie + "' AND prod_year = " + year;
-            Statement statement = connection.createStatement();
-            ResultSet movieSet = statement.executeQuery(getMovie);
-            if(!movieSet.next()){
-                System.out.println("No movie found!");
-                return;
-            }
-            int prodYear = movieSet.getInt("prod_year");
-            float rating = movieSet.getFloat("rating");
-            System.out.println("\nMovie Info");
-            System.out.println("===========");
-            System.out.println(movie);
-            System.out.println("  Production year: " + prodYear);
-            System.out.println("  Rating: " + rating);
-            System.out.println("  Director:");
-            String getDirectorss = "SELECT * FROM Contract C, Stock S WHERE C.symbol = S.symbol AND C.title = '" + movie + "' AND C.prodyear = " + year + " AND (roletype = 'Both' OR roletype = 'Director')";
-            ResultSet DirectorsSet = statement.executeQuery(getDirectorss);
-            while(DirectorsSet.next()){
-                System.out.println("   " + DirectorsSet.getString("starname"));
-            }
-            //TODO: need directors
-            System.out.println("  Actors:");
-            String getActors = "SELECT * FROM Contract C, Stock S WHERE C.symbol = S.symbol AND C.title = '" + movie + "' AND C.prodyear = " + year + " AND (roletype = 'Both' OR roletype = 'Actor')";
-            ResultSet actorSet = statement.executeQuery(getActors);
-            while(actorSet.next()){
-                System.out.println("   " + actorSet.getString("starname"));
+            try{
+                String year = split[1];
+                int firstSpace = query.indexOf(' ', 0);
+                int secondSpace = query.indexOf(' ', firstSpace + 1);
+                String movie = query.substring(secondSpace + 1);
+                String getMovie = "SELECT * FROM Movie WHERE title = '" + movie + "' AND prod_year = " + year;
+                Statement statement = connection.createStatement();
+                ResultSet movieSet = statement.executeQuery(getMovie);
+                if(!movieSet.next()){
+                    System.out.println("No movie found!");
+                    return;
+                }
+                int prodYear = movieSet.getInt("prod_year");
+                float rating = movieSet.getFloat("rating");
+                System.out.println("\nMovie Info");
+                System.out.println("===========");
+                System.out.println(movie);
+                System.out.println("  Production year: " + prodYear);
+                System.out.println("  Rating: " + rating);
+                System.out.println("  Director:");
+                String getDirectorss = "SELECT * FROM Contract C, Stock S WHERE C.symbol = S.symbol AND C.title = '" + movie + "' AND C.prodyear = " + year + " AND (roletype = 'Both' OR roletype = 'Director')";
+                ResultSet DirectorsSet = statement.executeQuery(getDirectorss);
+                while(DirectorsSet.next()){
+                    System.out.println("   " + DirectorsSet.getString("starname").trim() + ": " + DirectorsSet.getInt("value") );
+                }
+                //TODO: need directors
+                System.out.println("  Actors:");
+                String getActors = "SELECT * FROM Contract C, Stock S WHERE C.symbol = S.symbol AND C.title = '" + movie + "' AND C.prodyear = " + year + " AND (roletype = 'Both' OR roletype = 'Actor')";
+                ResultSet actorSet = statement.executeQuery(getActors);
+                while(actorSet.next()){
+                    System.out.println("   " + actorSet.getString("starname").trim() + ": Contract Value, $" + actorSet.getInt("value"));
+                }
+            }catch(Exception e){
+                System.out.println("Try again, something went wrong.");
             }
         }   
         else if(query.contains("Top")){
@@ -634,7 +643,7 @@ public class TraderInterface {
             ResultSet selectSet = statement.executeQuery(select);
             System.out.println("Top movies within " + range + ":");
             while(selectSet.next()){
-                System.out.println(selectSet.getString("title").trim());
+                System.out.println(selectSet.getString("title").trim() + ", " + selectSet.getInt("prod_year"));
             }
         }
         else if(query.contains("Review")){
