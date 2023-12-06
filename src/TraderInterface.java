@@ -283,7 +283,7 @@ public class TraderInterface {
                     statement.executeUpdate(insertPriceAmount);
                 }
 
-                System.out.println("Bought " + amount + " " + symbol + "'s" );
+                System.out.println("Bought " + amount + " " + symbol + "'s at " + curPrice );
             } catch(Exception e){
                 e.printStackTrace();
 
@@ -482,9 +482,8 @@ public class TraderInterface {
                 System.out.println("Need to include symbol.");
                 return;
             }
-            System.out.println("\n");
+            System.out.print("\n");
             try{String symbol = split[2];
-                System.out.println("symbol: " + symbol);
                 String a = "SELECT DISTINCT T.transid FROM (" + 
                     "SELECT C.transid as transid " +
                     "FROM CancelTransaction C " +
@@ -502,6 +501,37 @@ public class TraderInterface {
                 System.out.println("Here are the transactions for " + symbol + ":");
                 ResultSet transaction = statement.executeQuery(a);
                 Statement subStatement = connection.createStatement();
+                if(transaction.next()){
+                    int transid = transaction.getInt("transid");
+
+                    String tranDetail = "SELECT * FROM Transaction WHERE transid = "+ transid;
+                    ResultSet tranDetailSet = subStatement.executeQuery(tranDetail);
+                    tranDetailSet.next();
+
+                    int type = tranDetailSet.getInt("ttype");
+                    Date tdate = tranDetailSet.getDate("tdate");
+                    if(type == 2){
+                        String getBuy = "SELECT * FROM BuyTransaction WHERE transid = " + transid;
+                        ResultSet getBuySet = subStatement.executeQuery(getBuy);
+                        getBuySet.next();
+                        float price = getBuySet.getFloat("price");
+                        float buycount = getBuySet.getFloat("buycount");
+                        System.out.println(tdate + ": Buy - " + symbol + ", " + buycount + " at " + price);
+                    }
+                    else if(type == 3){
+                        String getSell = "SELECT * FROM SellTransaction WHERE transid = " + transid;
+                        ResultSet getSellSet = subStatement.executeQuery(getSell);
+                        getSellSet.next();
+                        float price = getSellSet.getFloat("price");
+                        float Sellcount = getSellSet.getFloat("totalCount");
+                        System.out.println(tdate + ": Sell - " + symbol + ", " + Sellcount + " at " + price + " - Profit : " + getSellSet.getFloat("profit"));  
+                    }
+                    else{
+                        System.out.println(tdate + ": Cancelled.");
+                    }
+                } else{
+                    System.out.println("No Transactions for " + symbol);
+                }
                 while(transaction.next()){
                     int transid = transaction.getInt("transid");
 
@@ -540,7 +570,7 @@ public class TraderInterface {
                 System.out.println("Need to include symbol name");
                 return;
             }
-            System.out.println("\n");
+            System.out.print("\n");
             String symbol = split[1];
             String getStock = "SELECT * FROM Stock WHERE symbol = '" + symbol + "'";
             Statement statement = connection.createStatement();
@@ -595,7 +625,7 @@ public class TraderInterface {
             }
         }   
         else if(query.contains("Top")){
-            System.out.println("\n");
+            System.out.print("\n");
             String range = split[1];
             int firstyear = Integer.parseInt(range.substring(0, range.indexOf('-')));
             int secondyear = Integer.parseInt(range.substring(range.indexOf('-') + 1));
