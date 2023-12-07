@@ -509,7 +509,7 @@ public class TraderInterface {
                         getBuySet.next();
                         float price = getBuySet.getFloat("price");
                         float buycount = getBuySet.getFloat("buycount");
-                        System.out.println(tdate + ": Buy - " + symbol + ", " + buycount + " at " + price);
+                        System.out.println(tdate + ": Buy - " + symbol + ", " + buycount + " at $" + price);
                     }
                     else if(type == 3){
                         String getSell = "SELECT * FROM SellTransaction WHERE transid = " + transid;
@@ -517,7 +517,7 @@ public class TraderInterface {
                         getSellSet.next();
                         float price = getSellSet.getFloat("price");
                         float Sellcount = getSellSet.getFloat("totalCount");
-                        System.out.println(tdate + ": Sell - " + symbol + ", " + Sellcount + " at " + price + " - Profit : " + getSellSet.getFloat("profit"));  
+                        System.out.printf(tdate + ": Sell - " + symbol + ", " + Sellcount + " at $" + price + " - Profit : " + "$" +  "%.2f\n", getSellSet.getFloat("profit"));  
                     }
                     else{
                         System.out.println(tdate + ": Cancelled.");
@@ -629,6 +629,13 @@ public class TraderInterface {
                 while(actorSet.next()){
                     System.out.println("   " + actorSet.getString("starname").trim() + ": Contract Value, $" + actorSet.getInt("value"));
                 }
+                System.out.println("  Reviews:");
+                String getReviews= "SELECT * FROM Review WHERE title = '" + movie+ "' AND prodyear = " + year;
+                ResultSet reviewSet = statement.executeQuery(getReviews);
+                while(reviewSet.next()){
+                    System.out.println("   " + reviewSet.getString("rcomment").trim());
+                }
+                    
             }catch(Exception e){
                 System.out.println("Try again, something went wrong.");
             }
