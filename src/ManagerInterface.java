@@ -337,6 +337,9 @@
                 Integer totalCommissions = 0;
 
                 Statement subStatement = connection.createStatement();
+
+                float totalProfit = 0;
+
                 while(transaction.next()){
                     int transid = transaction.getInt("transid");
 
@@ -360,7 +363,7 @@
                         float price = getBuySet.getFloat("price");
                         float buycount = getBuySet.getFloat("buycount");
                         String symbol = getBuySet.getString("stockSym");
-                        System.out.println(tdate + ": Buy - " + symbol + ", " + buycount + " at " + price);
+                        System.out.println(tdate + ": Buy - " + symbol + ", " + buycount + " at $" + price);
                     }
                     else if(type == 3){
                         totalCommissions += 20;
@@ -372,8 +375,10 @@
                         }
                         float price = getSellSet.getFloat("price");
                         float Sellcount = getSellSet.getFloat("totalCount");
+                        float profit = getSellSet.getFloat("profit");
+                        totalProfit += profit;
                         String symbol = getSellSet.getString("stockSym");
-                        System.out.printf(tdate + ": Sell - " + symbol + ", " + Sellcount + " at " + price + " - Profit : " + " %.2f \n",getSellSet.getFloat("profit"));  
+                        System.out.printf(tdate + ": Sell - " + symbol + ", " + Sellcount + " at $" + price + " - Profit : $" + " %.2f \n",profit);  
                     }
                     else if (type == 5) {
                         String getInterest = "SELECT * FROM MoneyTransaction WHERE transid = " + transid;
@@ -383,12 +388,32 @@
                             continue;
                         }
                         float interest = getInterestSet.getFloat("amountMoney");
-                        System.out.printf(tdate + ": Interest - " + "%.2f \n",interest);  
-
+                        totalProfit += interest;
+                        System.out.printf(tdate + ": Interest - $" + "%.2f \n",interest);  
                     }
                     else if (type == 4){
                         totalCommissions += 40;
                         System.out.println(tdate + ": Cancelled.");
+                    }
+                    else if (type == 0) {
+                        String getInterest = "SELECT * FROM MoneyTransaction WHERE transid = " + transid;
+                        ResultSet getInterestSet = subStatement.executeQuery(getInterest);
+                        if (!getInterestSet.next()) {
+                            System.out.println("ERROR: Deposit Transaction Not Found");
+                            continue;
+                        }
+                        float interest = getInterestSet.getFloat("amountMoney");
+                        System.out.printf(tdate + ": Deposit - $" + "%.2f \n",interest);  
+                    }
+                    else if (type == 1) {
+                        String getInterest = "SELECT * FROM MoneyTransaction WHERE transid = " + transid;
+                        ResultSet getInterestSet = subStatement.executeQuery(getInterest);
+                        if (!getInterestSet.next()) {
+                            System.out.println("ERROR: Withdraw Transaction Not Found");
+                            continue;
+                        }
+                        float interest = getInterestSet.getFloat("amountMoney");
+                        System.out.printf(tdate + ": Withdraw - $" + "%.2f \n",interest);  
                     }
                 }
 
@@ -455,8 +480,11 @@
                     " ORDER BY currDate ASC"
                 );
 
+                Float initialBalance = (float) 0;
+
                 if (balanceSet.next()) {
-                    System.out.printf("\nInitial Balance: " + "%.2f \n", Float.toString(balanceSet.getFloat("currBalance")));
+                    initialBalance = balanceSet.getFloat("currBalance");
+                    System.out.printf("\nInitial Balance: $" + "%.2f \n", initialBalance);
                 }
                 else {
                     System.out.println("\nInitial Balance not found...");
@@ -468,14 +496,19 @@
                     "SELECT balance FROM Customer WHERE markAccId = " + customerId
                 );
 
+                Float finalBalance = (float) 0;
+
                 if (balanceSet.next()) {
-                    System.out.printf("Final Balance: " + "%.2f \n", Float.toString(balanceSet.getFloat("balance")));
+                    finalBalance = balanceSet.getFloat("balance");
+                    System.out.printf("Final Balance: $" + "%.2f \n", finalBalance);
                 }
                 else{
                     System.out.println("Final Balance not found...");
                 }
 
-                System.out.println("Total Commissions: " + totalCommissions);
+                System.out.println("Total Commissions: $" + totalCommissions);
+
+                System.out.printf("Total Earnings/Loss: $%.2f \n", totalProfit);
 
                 
             }
@@ -567,7 +600,7 @@
                         System.out.println("WARNING: No Interest History found... not added to DTER calculation for User: " + username);
                     }
 
-                    if (totalProfit >= 10000) dterUserNames.add(username.trim() + "--" + state.trim());
+                    if (totalProfit >= 10000) dterUserNames.add(username.trim() + "-" + state.trim());
 
                 }
 
@@ -595,7 +628,7 @@
                 );
 
                 if (balanceSet.next()) {
-                    System.out.println("Current Balance: " + Float.toString(balanceSet.getFloat("balance")));
+                    System.out.println("Market Account Balance: " + Float.toString(balanceSet.getFloat("balance")));
                 }
                 else {
                     System.out.println("ERROR: User does not have a market account");
