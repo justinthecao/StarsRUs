@@ -50,17 +50,11 @@ public class TraderInterface {
                             "SELECT * FROM Customer WHERE username = '" + username + "'");
                     resultSet.next();
                     if (!resultSet.getString("cpassword").trim().equals(password.trim())) {
-                        System.out.println(password);
-                        System.out.println(resultSet.getString("cpassword"));
-                        System.out.println(password.length());
-                        System.out.println(resultSet.getString("cpassword").length());
                         System.out.println("Incorrect Username/Password :(");
                         return;
                     }
                     markAccId = resultSet.getInt("markAccId");
                 } catch (Exception e) {
-                    System.out.println("ERROR: selection failed.");
-                    System.out.println(e);
                     System.out.println("Exception: Incorrect Username/Password :(");
                     return;
                 }
