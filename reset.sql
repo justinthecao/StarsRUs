@@ -1,5 +1,4 @@
 Drop Table Price;
-Drop Table PricePair;
 Drop Table Review;
 
 Drop Table Contract;
@@ -18,6 +17,7 @@ Drop Table Customer;
 DROP Table Administrator;
 DROP Table CurrentDate;
 DROP Table Market;
+DROP Table InterestHistory;
 
 CREATE TABLE Customer(
     username CHAR(64),
@@ -272,6 +272,7 @@ INSERT INTO Contract VALUES
 
 INSERT INTO Contract VALUES
 ('STC', 'Jerry Maguire', 1996, 5000000, 'Actor', 1996);
+
 
 
 INSERT INTO StockAccount VALUES
