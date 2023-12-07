@@ -119,7 +119,10 @@
                     ResultSet resultDateSet = dateQuery.executeQuery(
                         "SELECT currDate FROM CurrentDate"
                     );
-                    resultDateSet.next();
+                    if (!resultDateSet.next()) {
+                        System.out.println("Current Date Not Found");
+                        return;
+                    }
                     currentDate = resultDateSet.getDate("currDate").toString();
                 } catch (Exception ee) {
                     System.out.println("ERROR: Current Date not found.");
@@ -149,7 +152,10 @@
             ResultSet resultDateSet = dateQuery.executeQuery(
                 "SELECT currDate FROM CurrentDate"
             );
-            resultDateSet.next();
+            if (!resultDateSet.next()) {
+                System.out.println("Current Date Not Found");
+                return;
+            }
             currentDate = resultDateSet.getDate("currDate").toString();
             System.out.println("Current Date: " + currentDate);
 
@@ -167,7 +173,7 @@
                 Integer monthLength = localDate.lengthOfMonth();
 
                 if (today != monthLength) {
-                    System.out.println("Not end of month yet!");
+                    System.out.println("ERROR: Not end of month yet!");
                     return;
                 }
 
@@ -176,10 +182,13 @@
                     "SELECT isOpen FROM Market"
                 );
 
-                openSet.next();
+                if (!openSet.next()) {
+                    System.out.println("ERROR: Data on Market Not Found");
+                    return;
+                }
 
                 if (openSet.getInt("isOpen") == 1) {
-                    System.out.println("Market has not closed yet!");
+                    System.out.println("ERROR: Market has not closed yet!");
                     return;
                 }
 
@@ -196,13 +205,18 @@
 
                         Float currBalance;
 
-                        System.out.println("Getting Current Balance, Market Id: " + marketId);
+                        System.out.println("\nGetting Current Balance, Market Id: " + marketId);
                         ResultSet currBalanceSet = interestQuery.executeQuery(
                             "SELECT balance " +
                             "FROM Customer " +
                             "WHERE markAccId = " + marketId
                         );
-                        currBalanceSet.next();
+
+                        if (!currBalanceSet.next()) {
+                            System.out.println("Current Balance Not Found");
+                            return;
+                        }
+
                         currBalance = currBalanceSet.getFloat("balance");
                         
                         System.out.println("Received Balance: " + currBalance);
@@ -218,8 +232,8 @@
                         );
                         
                         while (accountHistorySet.next()) {
-                            System.out.println("previous day: " + prevDay);
-                            System.out.println("previous balance: " + prevBalance);
+                            //System.out.println("previous day: " + prevDay);
+                            //System.out.println("previous balance: " + prevBalance);
                             Integer currentDay = accountHistorySet.getInt("currDay");
                             Float currentBalance = accountHistorySet.getFloat("currBalance");
                             Integer period = currentDay - prevDay;
@@ -229,8 +243,8 @@
                             prevBalance = currentBalance;
                         }
 
-                        System.out.println("previous day: " + prevDay);
-                        System.out.println("previous balance: " + prevBalance);
+                        //System.out.println("previous day: " + prevDay);
+                        //System.out.println("previous balance: " + prevBalance);
 
                         Integer period = today - prevDay + 1;
                         totalDays += period;
@@ -240,7 +254,7 @@
                         // second day 5: balance = 200
                         // current day is 10
 
-                        System.out.println("Average Daily Balance: " + totalBalance / totalDays);
+                        //System.out.println("Average Daily Balance: " + totalBalance / totalDays);
 
                         Float interestGain = (float) ((totalBalance / totalDays) * 0.02);
 
@@ -255,17 +269,36 @@
                         System.out.println("Updated Balance with Accrued Interest: " + newBalance);
 
                         interestQuery.executeUpdate(
-                            "INSERT INTO Interest History VALUES (" + marketId + ", " + (interestGain) + ")"
+                            "INSERT INTO InterestHistory VALUES (" + marketId + ", " + (interestGain) + ")"
                         );
 
                         System.out.println("Amount Gained from Interest: " + (interestGain));
+
+                        Statement statement = connection.createStatement();
+
+                        int newTransId = addNewTransaction(statement, 5, currentDate);
+                        String moneytranQuery = "INSERT INTO MoneyTransaction VALUES (" + newTransId + ", " + interestGain + "," + marketId + ")";
+                        statement.executeUpdate(moneytranQuery);
 
                     }
                 }
 
             }
             else if (query.contains("Generate Monthly Statement")) {
-                Integer customerId = Integer.parseInt(split[3]);
+
+                if (split.length < 4) {
+                    System.out.println("ERROR: Not Enough Arguments");
+                    return;
+                }
+
+                Integer customerId;
+                try {
+                    customerId = Integer.parseInt(split[3]);
+                }
+                catch (Exception e) {
+                    System.out.println("ERROR: Wrong Input");
+                    return;
+                }
 
                 Statement customerQuery = connection.createStatement();
                 ResultSet customerInfo = customerQuery.executeQuery(
@@ -274,47 +307,147 @@
                     "WHERE markAccId = " + customerId
                 );
 
-                customerInfo.next();
+                if (!customerInfo.next()) {
+                    System.out.println("ERROR: User Not Found");
+                    return;
+                }
 
                 System.out.println("Generating Monthly Statement for Customer: \nName: " + customerInfo.getString("cname") + "\nEmail: " + customerInfo.getString("email_address"));
 
-                Statement monthlyQuery = connection.createStatement();
-                ResultSet stockAccountsSet = monthlyQuery.executeQuery(
-                    "SELECT symbol, stockAccId " + 
-                    "FROM StockAccount " + 
-                    "WHERE customerId = " + customerId
-                );
+                String a = "SELECT DISTINCT T.transid FROM (" + 
+                    "SELECT C.transid as transid " +
+                    "FROM CancelTransaction C " +
+                    "WHERE C.custId = "+ customerId +
+                
+                    " UNION SELECT B.transid as transid " +
+                    "FROM BuyTransaction B " +
+                    "WHERE B.customerId = "+ customerId +
 
-                while (stockAccountsSet.next()) {
-                    String symbol = stockAccountsSet.getString("symbol");
-                    String stockAccountId = Integer.toString(stockAccountsSet.getInt("stockAccId"));
+                    " UNION SELECT M.transid as transid " +
+                    "FROM MoneyTransaction M " +
+                    "WHERE M.customerId = " + customerId +
+                    
+                    " UNION SELECT S.transid as transid " +
+                    "FROM SellTransaction S " +
+                    "WHERE S.customerId = "+ customerId + ") T ORDER BY T.transid";
 
-                    System.out.println("Printing Information for Stock Account: " + stockAccountId + " for stock: " + symbol);
+                Statement statement = connection.createStatement();
+                ResultSet transaction = statement.executeQuery(a);
 
-                    Statement transactionQuery = connection.createStatement();
+                Integer totalCommissions = 0;
 
-                    ResultSet buySet = transactionQuery.executeQuery(
-                        "SELECT BuyTransaction.buycount, BuyTransaction.price " +
-                        "FROM BuyTransaction, Transaction " +
-                        "WHERE BuyTransaction.customerId = " + customerId + " AND BuyTransaction.stockSym = '" + symbol + "' AND Transaction.transid = BuyTransaction.transid AND EXTRACT(MONTH FROM Transaction.tdate) = " + currMonth
-                    );
+                Statement subStatement = connection.createStatement();
+                while(transaction.next()){
+                    int transid = transaction.getInt("transid");
 
-                    System.out.println("Buy Transactions: ");
-                    while (buySet.next()) {
-                        System.out.println("Bought #" + Float.toString(buySet.getFloat("buycount")) + " " + symbol + "'s at Price: " + Float.toString(buySet.getFloat("price")));
+                    String tranDetail = "SELECT * FROM Transaction WHERE transid = "+ transid;
+                    ResultSet tranDetailSet = subStatement.executeQuery(tranDetail);
+                    if (!tranDetailSet.next()) {
+                        System.out.println("ERROR: Transaction Not Found");
+                        continue;
                     }
 
-                    ResultSet sellSet = transactionQuery.executeQuery(
-                        "SELECT SellTransaction.totalCount, SellTransaction.price, SellTransaction.profit " +
-                        "FROM SellTransaction, Transaction " +
-                        "WHERE SellTransaction.customerId = " + customerId + " AND SellTransaction.stockSym = '" + symbol + "' AND Transaction.transid = SellTransaction.transid AND EXTRACT(MONTH FROM Transaction.tdate) = " + currMonth
-                    );
+                    int type = tranDetailSet.getInt("ttype");
+                    Date tdate = tranDetailSet.getDate("tdate");
+                    if(type == 2){
+                        totalCommissions += 20;
+                        String getBuy = "SELECT * FROM BuyTransaction WHERE transid = " + transid;
+                        ResultSet getBuySet = subStatement.executeQuery(getBuy);
+                        if (!getBuySet.next()) {
+                            System.out.println("ERROR: Buy Transaction Not Found");
+                            continue;
+                        }
+                        float price = getBuySet.getFloat("price");
+                        float buycount = getBuySet.getFloat("buycount");
+                        String symbol = getBuySet.getString("stockSym");
+                        System.out.println(tdate + ": Buy - " + symbol + ", " + buycount + " at " + price);
+                    }
+                    else if(type == 3){
+                        totalCommissions += 20;
+                        String getSell = "SELECT * FROM SellTransaction WHERE transid = " + transid;
+                        ResultSet getSellSet = subStatement.executeQuery(getSell);
+                        if (!getSellSet.next()) {
+                            System.out.println("ERROR: Sell Transaction Not Found");
+                            continue;
+                        }
+                        float price = getSellSet.getFloat("price");
+                        float Sellcount = getSellSet.getFloat("totalCount");
+                        String symbol = getSellSet.getString("stockSym");
+                        System.out.printf(tdate + ": Sell - " + symbol + ", " + Sellcount + " at " + price + " - Profit : " + " %.2f \n",getSellSet.getFloat("profit"));  
+                    }
+                    else if (type == 5) {
+                        String getInterest = "SELECT * FROM MoneyTransaction WHERE transid = " + transid;
+                        ResultSet getInterestSet = subStatement.executeQuery(getInterest);
+                        if (!getInterestSet.next()) {
+                            System.out.println("ERROR: Interest Transaction Not Found");
+                            continue;
+                        }
+                        float interest = getInterestSet.getFloat("amountMoney");
+                        System.out.printf(tdate + ": Interest - " + "%.2f \n",interest);  
 
-                    System.out.println("Sell Transactions: ");
-                    while (sellSet.next()) {
-                        System.out.println("Sold #" + Float.toString(sellSet.getFloat("totalCount")) + " " + symbol + "'s at Price: " + Float.toString(sellSet.getFloat("price")) + " w/ Profit: " + Float.toString(sellSet.getFloat("profit")));
+                    }
+                    else if (type == 4){
+                        totalCommissions += 40;
+                        System.out.println(tdate + ": Cancelled.");
                     }
                 }
+
+                // Statement monthlyQuery = connection.createStatement();
+                // ResultSet stockAccountsSet = monthlyQuery.executeQuery(
+                //     "SELECT symbol, stockAccId " + 
+                //     "FROM StockAccount " + 
+                //     "WHERE customerId = " + customerId
+                // );
+
+                // Integer totalCommissions = 0;
+
+                // while (stockAccountsSet.next()) {
+                //     String symbol = stockAccountsSet.getString("symbol");
+                //     String stockAccountId = Integer.toString(stockAccountsSet.getInt("stockAccId"));
+
+                //     System.out.println("\nPrinting Information for Stock Account: " + stockAccountId + " for stock: " + symbol);
+
+                //     Statement transactionQuery = connection.createStatement();
+
+                //     ResultSet buySet = transactionQuery.executeQuery(
+                //         "SELECT BuyTransaction.buycount, BuyTransaction.price, Transaction.tdate " +
+                //         "FROM BuyTransaction, Transaction " +
+                //         "WHERE BuyTransaction.customerId = " + customerId + " AND BuyTransaction.stockSym = '" + symbol + "' AND Transaction.transid = BuyTransaction.transid AND EXTRACT(MONTH FROM Transaction.tdate) = " + currMonth +
+                //         " ORDER BY Transaction.tdate"
+                //     );
+
+                //     System.out.println("\nBuy Transactions: ");
+                //     while (buySet.next()) {
+                //         System.out.println(buySet.getDate("tdate") + " | Bought #" + Float.toString(buySet.getFloat("buycount")) + " " + symbol + "'s at Price: " + Float.toString(buySet.getFloat("price")));
+                //         totalCommissions += 20;
+                //     }
+
+                //     ResultSet sellSet = transactionQuery.executeQuery(
+                //         "SELECT SellTransaction.totalCount, SellTransaction.price, SellTransaction.profit, Transaction.tdate " +
+                //         "FROM SellTransaction, Transaction " +
+                //         "WHERE SellTransaction.customerId = " + customerId + " AND SellTransaction.stockSym = '" + symbol + "' AND Transaction.transid = SellTransaction.transid AND EXTRACT(MONTH FROM Transaction.tdate) = " + currMonth +
+                //         " ORDER BY Transaction.tdate"
+                //     );
+
+                //     System.out.println("\nSell Transactions: ");
+                //     while (sellSet.next()) {
+                //         System.out.println(sellSet.getDate("tdate") + " | Sold #" + Float.toString(sellSet.getFloat("totalCount")) + " " + symbol + "'s at Price: " + Float.toString(sellSet.getFloat("price")) + " w/ Profit: " + Float.toString(sellSet.getFloat("profit")));
+                //         totalCommissions += 20;
+                //     }
+
+                //     ResultSet cancelSet = transactionQuery.executeQuery(
+                //         "SELECT CancelTransaction.transid, Transaction.tdate " +
+                //         "FROM CancelTransaction, Transaction " +
+                //         "WHERE CancelTransaction.custId = " + customerId + " AND CancelTransaction.cancelSym = '" + symbol + "' AND Transaction.transid = CancelTransaction.transid AND EXTRACT(MONTH FROM Transaction.tdate) = " + currMonth +
+                //         " ORDER BY Transaction.tdate"
+                //     );
+
+                //     System.out.println("\nCancel Transactions: ");
+                //     while (cancelSet.next()) {
+                //         System.out.println( cancelSet.getDate("tdate") + " | Cancel Transaction ID: " + Integer.toString(cancelSet.getInt("transid")));
+                //         totalCommissions += 40;
+                //     }
+                // }
 
                 Statement balanceQuery = connection.createStatement();
                 ResultSet balanceSet = balanceQuery.executeQuery(
@@ -322,18 +455,27 @@
                     " ORDER BY currDate ASC"
                 );
 
-                balanceSet.next();
+                if (balanceSet.next()) {
+                    System.out.printf("\nInitial Balance: " + "%.2f \n", Float.toString(balanceSet.getFloat("currBalance")));
+                }
+                else {
+                    System.out.println("\nInitial Balance not found...");
+                }
 
-                System.out.println("Initial Balance: " + Float.toString(balanceSet.getFloat("currBalance")));
+                //check if balance exists -- 
 
                 balanceSet = balanceQuery.executeQuery(
-                    "SELECT currBalance FROM MarketAccountHistory WHERE markAccId = " + customerId + " AND EXTRACT(MONTH FROM currDate) = " + currMonth +
-                    " ORDER BY currDate DESC"
+                    "SELECT balance FROM Customer WHERE markAccId = " + customerId
                 );
 
-                balanceSet.next();
+                if (balanceSet.next()) {
+                    System.out.printf("Final Balance: " + "%.2f \n", Float.toString(balanceSet.getFloat("balance")));
+                }
+                else{
+                    System.out.println("Final Balance not found...");
+                }
 
-                System.out.println("Final Balance: " + Float.toString(balanceSet.getFloat("currBalance")));
+                System.out.println("Total Commissions: " + totalCommissions);
 
                 
             }
@@ -351,14 +493,14 @@
                     String marketId = Integer.toString(AccountsSet.getInt("markAccId"));
                     String username = (AccountsSet.getString("username"));
 
-                    System.out.println("Checking Activity of : " + marketId);
+                    //System.out.println("Checking Activity of : " + marketId);
 
                     Float totalShares = (float) 0;
 
                     Statement shareCount = connection.createStatement();
                     ResultSet buySet = shareCount.executeQuery(
                         "SELECT BuyTransaction.buycount " +
-                        "FROM BuyTransaction, Transaction" +
+                        "FROM BuyTransaction, Transaction " +
                         "WHERE BuyTransaction.customerId = " + marketId + " AND BuyTransaction.transid = Transaction.transid AND EXTRACT(MONTH FROM Transaction.tdate) = " + currMonth
                     );
 
@@ -366,7 +508,7 @@
                         totalShares += buySet.getFloat("buycount");
                     }
 
-                    System.out.println("Retrieved Buy Count: " + totalShares);
+                    //System.out.println("Retrieved Buy Count: " + totalShares);
 
                     ResultSet sellSet = shareCount.executeQuery(
                         "SELECT SellTransaction.totalCount " +
@@ -389,7 +531,7 @@
 
                 Statement accountsQuery = connection.createStatement();
                 ResultSet AccountsSet = accountsQuery.executeQuery(
-                        "SELECT markAccId, username FROM Customer"
+                        "SELECT markAccId, username, cstate FROM Customer"
                     );
 
                 List<String> dterUserNames= new ArrayList<String>();
@@ -397,6 +539,7 @@
                 while (AccountsSet.next()) {
                     String marketId = Integer.toString(AccountsSet.getInt("markAccId"));
                     String username = (AccountsSet.getString("username"));
+                    String state = AccountsSet.getString("cstate");
                     Float totalProfit = (float) 0;
 
                     Statement profitQuery = connection.createStatement();
@@ -417,10 +560,14 @@
                         "WHERE customerId = " + marketId
                     );
 
-                    interestSet.next();
-                    totalProfit += interestSet.getFloat("interestEarning");
+                    if(interestSet.next()) {
+                        totalProfit += interestSet.getFloat("interestEarning");
+                    }
+                    else {
+                        System.out.println("WARNING: No Interest History found... not added to DTER calculation for User: " + username);
+                    }
 
-                    if (totalProfit >= 10000) dterUserNames.add(username.trim());
+                    if (totalProfit >= 10000) dterUserNames.add(username.trim() + "--" + state.trim());
 
                 }
 
@@ -428,7 +575,18 @@
 
             }
             else if (query.contains("Customer Report")) {
-                Integer customerId = Integer.parseInt(split[2]);
+                if (split.length < 3) {
+                    System.out.println("ERROR: Not Enough Arguments");
+                    return;
+                }
+                Integer customerId;
+                try {
+                    customerId = Integer.parseInt(split[2]);
+                }
+                catch (Exception e) {
+                    System.out.println("ERROR: Wrong Input");
+                    return;
+                }
                 System.out.println("Generating Customer Report for ID: " + customerId);
 
                 Statement reportQuery = connection.createStatement();
@@ -436,9 +594,13 @@
                     "SELECT balance FROM Customer WHERE markAccId = " + customerId
                 );
 
-                balanceSet.next();
-
-                System.out.println("Current Balance: " + Float.toString(balanceSet.getFloat("balance")));
+                if (balanceSet.next()) {
+                    System.out.println("Current Balance: " + Float.toString(balanceSet.getFloat("balance")));
+                }
+                else {
+                    System.out.println("ERROR: User does not have a market account");
+                    return;
+                }
 
                 System.out.println("List of Stock Accounts: ");
 
@@ -460,35 +622,59 @@
 
                 Statement deleteQuery = connection.createStatement();
                 deleteQuery.executeUpdate(
-                    "DELETE * FROM SellTransaction"
+                    "DELETE FROM SellTransaction"
                 );
 
                 deleteQuery.executeUpdate(
-                    "DELETE * FROM BuyTransaction"
+                    "DELETE FROM BuyTransaction"
+                );
+                
+                deleteQuery.executeUpdate(
+                    "DELETE FROM CancelTransaction"
                 );
 
                 deleteQuery.executeUpdate(
-                    "DELETE * FROM CancelTransaction"
+                    "DELETE FROM MoneyTransaction"
                 );
 
                 deleteQuery.executeUpdate(
-                    "DELETE * FROM MoneyTransaction"
+                    "DELETE FROM Transaction"
                 );
 
                 deleteQuery.executeUpdate(
-                    "DELETE * FROM Transaction"
-                );
-
-                deleteQuery.executeUpdate(
-                    "DELETE * FROM InterestHistory"
+                    "DELETE FROM InterestHistory"
                 );
 
                 System.out.println("All Transactions have been deleted");
 
             }
             else if (query.contains("Open Market")) {
-                System.out.println("Current Date: " + currentDate);
                 System.out.println("Opening Marketing");
+
+                Statement openQuery = connection.createStatement();
+                ResultSet openSet = openQuery.executeQuery(
+                    "SELECT isOpen FROM Market"
+                );
+
+                if (!openSet.next()) {
+                    System.out.println("ERROR: Data on Market Not Found");
+                    return;
+                }
+
+                if(openSet.getInt("isOpen") == 1) {
+                    System.out.println("ERROR: Market is Already Open");
+                    return;
+                }
+
+                Statement checkPastQuery = connection.createStatement();
+                ResultSet checkPastSet = checkPastQuery.executeQuery(
+                    "SELECT * FROM MarketAccountHistory WHERE currDate = DATE '" + currentDate + "'"
+                );
+
+                if (checkPastSet.next()) {
+                    System.out.println("ERROR: Market has been opened before on this date");
+                    return;
+                }
 
                 Statement openMarketQuery = connection.createStatement();
                 openMarketQuery.executeUpdate(
@@ -500,16 +686,28 @@
 
             }
             else if (query.contains("Close Market")) {
-                System.out.println("Current Date: " + currentDate);
-                System.out.println("Closing Marketing");
+                System.out.println("Closing Market");
+
+                Statement openQuery = connection.createStatement();
+                ResultSet openSet = openQuery.executeQuery(
+                    "SELECT isOpen FROM Market"
+                );
+
+                if (!openSet.next()) {
+                    System.out.println("ERROR: Data on Market Not Found");
+                    return;
+                }
+
+                if(openSet.getInt("isOpen") == 0) {
+                    System.out.println("ERROR: Market is Already Closed");
+                    return;
+                }
 
                 Statement openMarketQuery = connection.createStatement();
                 openMarketQuery.executeUpdate(
                     "UPDATE Market " +
                     "SET isOpen = 0"
                 );
-
-                System.out.println("Market is Closed");
 
                 Statement accountsQuery = connection.createStatement();
                 ResultSet AccountsSet = accountsQuery.executeQuery(
@@ -527,9 +725,11 @@
                         "WHERE markAccId = " + marketId
                     );
 
-                    System.out.println("Obtained All Account ID's");
+                    //System.out.println("Obtained All Account ID's");
 
-                    marketAccountInfo.next();
+                    if (!marketAccountInfo.next()) {
+                        System.out.println("ERROR: No balance found for " + marketId);
+                    }
 
                     String currBalance = Float.toString(marketAccountInfo.getFloat("balance"));
 
@@ -538,7 +738,7 @@
                         "VALUES ( DATE '" + currentDate + "' , " + currBalance + " , " + marketId + " )"
                     );
 
-                    System.out.println("Updated Account #" + marketId);
+                    //System.out.println("Updated Account #" + marketId);
 
                 }
 
@@ -552,16 +752,48 @@
                     String symbol = currPriceSet.getString("symbol");
                     Statement closingPriceQuery = connection.createStatement();
                     closingPriceQuery.executeUpdate(
-                        "INSERT INTO Price VALUES (" + symbol + ", DATE '" + currentDate + "', " + price + ")" 
+                        "INSERT INTO Price VALUES ('" + symbol + "', DATE '" + currentDate + "', " + price + ")" 
                     );
-                    System.out.println("Updated Closing Prices For " + symbol);
+                    //System.out.println("Updated Closing Prices For " + symbol);
                 }
+
+                System.out.println("Market is Closed");
 
 
             }
             else if (query.contains("Set Stock Price")) {
-                String symbol = split[3];
-                String newPrice = Float.toString(Float.parseFloat(split[4]));
+                if (split.length < 5) {
+                    System.out.println("ERROR: Not Enough Arguments");
+                    return;
+                }
+                String symbol;
+                String newPrice;
+
+                try {
+                    symbol = split[3];
+                }
+                catch (Exception e) {
+                    System.out.println("ERROR: Invalid Symbol");
+                    return;
+                }
+
+                try {
+                    newPrice = Float.toString(Float.parseFloat(split[4]));
+                }
+                catch (Exception ec) {
+                    System.out.println("ERROR: Invalid Price");
+                    return;
+                }
+
+                String symbolquery = "SELECT * FROM Stock WHERE symbol = '" + symbol + "'";
+                Statement statement = connection.createStatement();
+                ResultSet symbolSet = statement.executeQuery(
+                    symbolquery
+                );
+                if(!symbolSet.next()){
+                    System.out.println("ERROR: No symbol found!");
+                    return;
+                }
 
                 System.out.println("Setting price of '" + symbol + "' to " + newPrice);
 
@@ -576,13 +808,33 @@
 
             }
             else if (query.contains("Set Date")) {
-                String date = split[2];
+                if (split.length < 3) {
+                    System.out.println("ERROR: Not Enough Arguments");
+                    return;
+                }
+                String date;
+                try {
+                    date = split[2];
+                }
+                catch (Exception e) {
+                    System.out.println("ERROR: Invalid Date");
+                    return;
+                }
+
+                try {
+                    LocalDate newDate = LocalDate.parse(date);
+                }
+                catch (Exception e) {
+                    System.out.println("ERROR: Date is not valid");
+                    return;
+                }
+
                 System.out.println("Changing date to " + date);
 
                 Statement setDateQuery = connection.createStatement();
                 setDateQuery.executeUpdate(
                     "UPDATE CurrentDate " +
-                    "SET currDate = DATE( " + date + " )"
+                    "SET currDate = DATE '" + date + "' "
                 );
 
                 System.out.println("Date Changed");
@@ -598,7 +850,23 @@
 
 
 
-
+        static int getNewTransId(Statement statement) throws SQLException {
+            String getMaxTransId = "SELECT MAX(transid) as max FROM Transaction";
+            ResultSet transSet = statement.executeQuery(getMaxTransId);
+            transSet.next();
+            if (!(transSet.getString("max") == null)) {
+                return transSet.getInt("max") + 1;
+            }
+            return 0;
+        }
+    
+        static int addNewTransaction(Statement statement, int type, String date) throws SQLException {
+            int newTransId = getNewTransId(statement);
+            //System.out.println("new transid: " + newTransId);
+            String tranQuery = "INSERT INTO Transaction VALUES (" + newTransId + ", " + type + ", DATE '" + date + "')";
+            statement.executeUpdate(tranQuery);
+            return newTransId;
+        }
 
 
 
