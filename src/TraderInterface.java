@@ -59,7 +59,7 @@ public class TraderInterface {
                     return;
                 }
                 currentUser = username;
-                System.out.println("\nYou're in! What do you wanna do.");
+                System.out.println("\nYou're in " + markAccId + "! What do you wanna do.");
             }
             else{
                 try{
@@ -104,7 +104,7 @@ public class TraderInterface {
                     }
                     currentUser = username;
                     markAccId = newMark;
-                    System.out.println("\nYou're in! What do you wanna do.");
+                    System.out.println("\nYou're in " + markAccId + "! What do you wanna do.");
 
                 } catch(Exception e){
                     System.out.println("The system encountered an error, try registering again.");
@@ -541,19 +541,19 @@ public class TraderInterface {
             String star = stockSet.getString("starname");
             Date dob = stockSet.getDate("dob");
             System.out.println("Stock Info: " + symbol.trim());
-            System.out.println("   Current Price: " + curPrice);
+            System.out.println("   Current Price: $" + curPrice);
             System.out.println("   Actor: " + star.trim());
             System.out.println("   Dob: " + dob);
             System.out.println("   Movies: ");
             String contract = "SELECT * FROM Contract WHERE symbol = '" + symbol + "'";
             ResultSet contractSet = statement.executeQuery(contract);
             if(contractSet.next()){
-                System.out.println("      " + contractSet.getInt("prodyear") + ", " + contractSet.getString("title").trim() + ": " + contractSet.getString("roletype").trim() + ", " + contractSet.getString("value"));
+                System.out.println("      " + contractSet.getInt("prodyear") + ", " + contractSet.getString("title").trim() + ": " + contractSet.getString("roletype").trim() + ", $" + contractSet.getString("value"));
             }else{
                 System.out.println("       No movies");
             }
             while(contractSet.next()){
-                System.out.println("      " + contractSet.getInt("prodyear") + ", " + contractSet.getString("title").trim() + ": " + contractSet.getString("roletype").trim() +  ", " + contractSet.getString("value"));
+                System.out.println("      " + contractSet.getInt("prodyear") + ", " + contractSet.getString("title").trim() + ": " + contractSet.getString("roletype").trim() +  ", $" + contractSet.getString("value"));
             }
             
         }
@@ -586,7 +586,6 @@ public class TraderInterface {
                 while(DirectorsSet.next()){
                     System.out.println("   " + DirectorsSet.getString("starname").trim() + ": " + DirectorsSet.getInt("value") );
                 }
-                //TODO: need directors
                 System.out.println("  Actors:");
                 String getActors = "SELECT * FROM Contract C, Stock S WHERE C.symbol = S.symbol AND C.title = '" + movie + "' AND C.prodyear = " + year + " AND (roletype = 'Both' OR roletype = 'Actor')";
                 ResultSet actorSet = statement.executeQuery(getActors);
